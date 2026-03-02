@@ -257,29 +257,6 @@ function SystemControls() {
           </button>
         </div>
       </div>
-
-      {/* Additional Info */}
-      <div className="card info-section">
-        <h3>System Control Information</h3>
-        <ul className="info-list">
-          <li>
-            <strong>Performance Mode:</strong> Maximum CPU frequency, higher power consumption, 
-            best for intensive tasks
-          </li>
-          <li>
-            <strong>Ondemand Mode:</strong> Balanced performance and power efficiency, 
-            scales based on load
-          </li>
-          <li>
-            <strong>Powersave Mode:</strong> Minimum CPU frequency, lowest power consumption, 
-            suitable for idle systems
-          </li>
-          <li>
-            <strong>Root Access:</strong> Some controls require sudo privileges. Ensure the 
-            backend has proper permissions.
-          </li>
-        </ul>
-      </div>
     </div>
   );
 }

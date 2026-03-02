@@ -8,7 +8,7 @@
 .dashboard-header {
   background: var(--bg-secondary);
   border-bottom: 2px solid var(--border);
-  padding: 1.5rem 2rem;
+  padding: 0.75rem 1.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -25,20 +25,20 @@
 }
 
 .header-left h1 {
-  font-size: 1.5rem;
+  font-size: 1.1rem;
   margin: 0;
 }
 
 .status-badge {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-bright);
   border-radius: 20px;
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -75,23 +75,23 @@
 .dashboard-nav {
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
-  padding: 0 2rem;
+  padding: 0 1.5rem;
   display: flex;
-  gap: 0.5rem;
+  gap: 0.25rem;
   overflow-x: auto;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 1rem 1.5rem;
+  gap: 0.4rem;
+  padding: 0.6rem 1rem;
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--text-secondary);
   font-family: var(--font-display);
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -127,14 +127,14 @@
 
 .dashboard-content {
   flex: 1;
-  padding: 2rem;
+  padding: 1rem 1.5rem;
   overflow-y: auto;
 }
 
 .overview-grid {
   display: grid;
-  gap: 1.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
 }
 
 .system-info {
@@ -143,16 +143,16 @@
 
 .info-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-  margin-top: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
 }
 
 .info-item {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -179,7 +179,7 @@
 
 .info-value {
   font-family: var(--font-mono);
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -194,7 +194,7 @@
   align-items: center;
   cursor: pointer;
   user-select: none;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .section-header h3 {
@@ -226,16 +226,16 @@
 
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .metric-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 1.5rem 1rem;
+  padding: 0.75rem;
   text-align: center;
   transition: all 0.3s ease;
 }
@@ -248,7 +248,7 @@
 
 .metric-card svg {
   color: var(--accent-primary);
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.4rem;
 }
 
 .metric-card .icon-warning {
@@ -262,7 +262,7 @@
 
 .cores-grid {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.4rem;
 }
 
 .core-item {
@@ -316,7 +316,7 @@
 .dashboard-footer {
   background: var(--bg-secondary);
   border-top: 1px solid var(--border);
-  padding: 1rem 2rem;
+  padding: 0.5rem 1.5rem;
   margin-top: auto;
 }
 
@@ -326,7 +326,7 @@
   justify-content: center;
   gap: 1rem;
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
 }
 

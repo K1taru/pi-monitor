@@ -15,6 +15,7 @@ system_bp = Blueprint('system', __name__, url_prefix='/api/system')
 _GOVERNOR_PATH   = '/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor'
 _AVAILABLE_PATH  = '/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors'
 _FAN_CONTROL_BIN = '/usr/local/bin/raspy-fan-control'
+_GOV_CONTROL_BIN = '/usr/local/bin/raspy-gov-control'
 
 
 def _find_fan_hwmon():
@@ -72,8 +73,8 @@ def cpu_governor():
             return jsonify({'error': f'Invalid governor: {governor}'}), 400
 
         subprocess.run(
-            ['sudo', 'tee', _GOVERNOR_PATH],
-            input=governor, text=True, capture_output=True, check=True,
+            ['sudo', _GOV_CONTROL_BIN, governor],
+            capture_output=True, text=True, check=True,
         )
         return jsonify({'message': f'Governor set to {governor}'}), 200
     except (OSError, subprocess.CalledProcessError) as e:
