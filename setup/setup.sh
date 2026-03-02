@@ -85,7 +85,11 @@ cd "$PROJECT_DIR"
 # 1. Frontend build
 # ========================================
 echo "[1/6] Building frontend..."
-su - "$USERNAME" -c "cd '$FRONTEND_DIR' && npm ci && npm run build"
+su - "$USERNAME" -c "
+    # Source nvm if installed (common on Pi / user installs)
+    [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"
+    cd '$FRONTEND_DIR' && npm ci && npm run build
+"
 echo "[ok] Frontend built"
 
 # ========================================
