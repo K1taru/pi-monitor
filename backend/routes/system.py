@@ -16,13 +16,47 @@ _GOVERNOR_PATH   = '/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor'
 _AVAILABLE_PATH  = '/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors'
 _FAN_CONTROL_BIN = '/usr/local/bin/raspy-fan-control'
 _GOV_CONTROL_BIN = '/usr/local/bin/raspy-gov-control'
+_HWMON_CACHE     = '/run/raspy-fan-hwmon'
+
+# Module-level cache — populated once, revalidated only when the path disappears.
+_fan_hwmon_cached: str | None = None
 
 
-def _find_fan_hwmon():
-    """Return the hwmon sysfs directory that exposes PWM fan control, or None."""
+def _find_fan_hwmon() -> str | None:
+    """Return the hwmon sysfs directory that exposes PWM fan control.
+
+    The result is cached in memory and in /run/raspy-fan-hwmon so that both
+    this process and fan-control.sh agree on the path without re-scanning on
+    every call (hwmon index shifts on reboot but stays stable at runtime).
+    """
+    global _fan_hwmon_cached
+
+    # Fast path: in-memory cache is still valid
+    if _fan_hwmon_cached and os.path.exists(f'{_fan_hwmon_cached}/pwm1'):
+        return _fan_hwmon_cached
+
+    # Try the on-disk cache written by fan-control.sh
+    try:
+        with open(_HWMON_CACHE) as fh:
+            cached = fh.read().strip()
+        if os.path.exists(f'{cached}/pwm1'):
+            _fan_hwmon_cached = cached
+            return _fan_hwmon_cached
+    except OSError:
+        pass
+
+    # Full scan — only reaches here on first use or after a hwmon index shift
     for path in sorted(glob.glob('/sys/class/hwmon/hwmon*')):
         if os.path.exists(f'{path}/pwm1'):
-            return path
+            _fan_hwmon_cached = path
+            try:
+                with open(_HWMON_CACHE, 'w') as fh:
+                    fh.write(path)
+            except OSError:
+                pass  # /run may not be writable without sudo; shell script will handle it
+            return _fan_hwmon_cached
+
+    _fan_hwmon_cached = None
     return None
 
 
