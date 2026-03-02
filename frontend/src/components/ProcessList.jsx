@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Activity, Search, RefreshCw } from 'lucide-react';
-import './ProcessList.css';
+import '../styles/ProcessList.css';
 
 function ProcessList() {
   const [processes, setProcesses] = useState([]);
@@ -9,7 +9,7 @@ function ProcessList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('cpu');
 
-  const fetchProcesses = async () => {
+  const fetchProcesses = useCallback(async () => {
     try {
       const response = await axios.get('/api/processes');
       setProcesses(response.data);
@@ -17,13 +17,13 @@ function ProcessList() {
     } catch (error) {
       console.error('Error fetching processes:', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchProcesses();
     const interval = setInterval(fetchProcesses, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchProcesses]);
 
   const filteredProcesses = processes
     .filter(proc => 

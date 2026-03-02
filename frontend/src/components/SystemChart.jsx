@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import './SystemChart.css';
+import '../styles/SystemChart.css';
 
-function SystemChart({ history }) {
+function SystemChart({ history, onTimeRangeChange }) {
   const [timeRange, setTimeRange] = useState(1);
   const [selectedMetrics, setSelectedMetrics] = useState({
     cpu_temp: true,
@@ -10,6 +10,11 @@ function SystemChart({ history }) {
     ram_percent: false,
     disk_percent: false,
   });
+
+  const handleTimeRangeChange = (hours) => {
+    setTimeRange(hours);
+    if (onTimeRangeChange) onTimeRangeChange(hours);
+  };
 
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
@@ -52,19 +57,19 @@ function SystemChart({ history }) {
             <div className="time-range-selector">
               <button
                 className={timeRange === 1 ? 'active' : ''}
-                onClick={() => setTimeRange(1)}
+                onClick={() => handleTimeRangeChange(1)}
               >
                 1H
               </button>
               <button
                 className={timeRange === 6 ? 'active' : ''}
-                onClick={() => setTimeRange(6)}
+                onClick={() => handleTimeRangeChange(6)}
               >
                 6H
               </button>
               <button
                 className={timeRange === 24 ? 'active' : ''}
-                onClick={() => setTimeRange(24)}
+                onClick={() => handleTimeRangeChange(24)}
               >
                 24H
               </button>

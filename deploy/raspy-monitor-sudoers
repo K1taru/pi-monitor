@@ -1,0 +1,16 @@
+# /etc/sudoers.d/raspy-monitor
+#
+# Grants the k1taru user passwordless sudo for the operations
+# required by the Raspy Monitor backend:
+#   1. Writing the CPU frequency governor via tee
+#   2. Controlling the fan via the raspy-fan-control wrapper script
+#   3. Rebooting the system via the /api/system/reboot endpoint
+#
+# Install with:
+#   sudo install -m 0755 deploy/fan-control.sh /usr/local/bin/raspy-fan-control
+#   sudo install -m 0440 deploy/raspy-monitor-sudoers /etc/sudoers.d/raspy-monitor
+#   sudo visudo -c   # verify no syntax errors
+
+k1taru ALL=(root) NOPASSWD: /usr/bin/tee /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+k1taru ALL=(root) NOPASSWD: /usr/local/bin/raspy-fan-control
+k1taru ALL=(root) NOPASSWD: /usr/sbin/reboot

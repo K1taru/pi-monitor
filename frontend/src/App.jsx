@@ -3,10 +3,11 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import './App.css';
+import './styles/App.css';
 
-// Configure axios defaults
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// Configure axios defaults — always relative to the host serving the app
+// Works for: raspy.local:8001, 192.168.x.x:8001, https://raspy.gymms.space
+axios.defaults.baseURL = window.location.origin;
 
 // Auto-logout on 401 (expired / invalid token)
 axios.interceptors.response.use(
@@ -69,7 +70,7 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         <Route 
           path="/login" 

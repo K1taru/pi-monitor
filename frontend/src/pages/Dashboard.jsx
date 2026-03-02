@@ -19,7 +19,7 @@ import SystemChart from '../components/SystemChart';
 import ProcessList from '../components/ProcessList';
 import Terminal from '../components/Terminal';
 import SystemControls from '../components/SystemControls';
-import './Dashboard.css';
+import '../styles/Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
   const [metrics, setMetrics] = useState(null);
@@ -403,7 +403,7 @@ function Dashboard({ user, onLogout }) {
 
         {activeTab === 'charts' && (
           <div className="charts-view">
-            <SystemChart history={history} />
+            <SystemChart history={history} onTimeRangeChange={fetchHistory} />
           </div>
         )}
 

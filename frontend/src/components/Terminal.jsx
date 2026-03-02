@@ -1,163 +1,157 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
-import { Terminal as TerminalIcon, Send, AlertTriangle } from 'lucide-react';
-import './Terminal.css';
+import '../styles/Terminal.css';
+
+const PROMPT = 'k1taru@raspy:~$';
 
 function Terminal() {
-  const [output, setOutput] = useState([]);
-  const [input, setInput] = useState('');
+  const [lines, setLines]         = useState([]);
+  const [input, setInput]         = useState('');
   const [connected, setConnected] = useState(false);
+  const [history, setHistory]     = useState([]);
+  const [histIdx, setHistIdx]     = useState(-1);
+
   const socketRef = useRef(null);
-  const outputRef = useRef(null);
+  const bodyRef   = useRef(null);
+  const inputRef  = useRef(null);
   const lineIdRef = useRef(0);
 
   const nextId = () => { lineIdRef.current += 1; return lineIdRef.current; };
 
+  const push = useCallback((text, type = 'output') => {
+    setLines(prev => [...prev, { id: nextId(), text, type }]);
+  }, []);
+
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-    
-    // Connect to WebSocket with JWT token
-    socketRef.current = io(apiUrl, {
-      query: { token }
-    });
+    const token  = localStorage.getItem('token');
+
+    socketRef.current = io(window.location.origin, { query: { token } });
 
     socketRef.current.on('connect', () => {
       setConnected(true);
-      addOutput('System terminal connected.', 'system');
-      addOutput('Type commands and press Enter or click Send.', 'system');
+      push(`Connected — ${new Date().toLocaleString()}`, 'info');
     });
 
     socketRef.current.on('disconnect', () => {
       setConnected(false);
-      addOutput('Disconnected from terminal.', 'error');
+      push('Connection closed.', 'error');
     });
 
     socketRef.current.on('connected', (data) => {
-      addOutput(data.message, 'system');
+      push(data.message, 'info');
     });
 
     socketRef.current.on('terminal_output', (data) => {
-      addOutput(data.output, 'output');
+      const raw = (data.output ?? '').replace(/\n$/, '');
+      raw.split('\n').forEach(line => push(line, 'output'));
     });
 
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-    };
+    return () => socketRef.current?.disconnect();
+  }, [push]);
+
+  // Always scroll to bottom when output or input changes
+  useEffect(() => {
+    if (bodyRef.current) {
+      bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+    }
+  }, [lines, input]);
+
+  // Focus input on mount
+  useEffect(() => {
+    inputRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    // Auto-scroll to bottom
-    if (outputRef.current) {
-      outputRef.current.scrollTop = outputRef.current.scrollHeight;
+  const submit = () => {
+    const cmd = input.trim();
+    if (!cmd || !connected) return;
+
+    push(`${PROMPT} ${cmd}`, 'cmd');
+
+    if (cmd === 'clear') {
+      setLines([]);
+      setInput('');
+      setHistIdx(-1);
+      return;
     }
-  }, [output]);
 
-  const addOutput = (text, type = 'output') => {
-    setOutput(prev => [...prev, {
-      id: nextId(),
-      text,
-      type,
-      timestamp: new Date().toLocaleTimeString()
-    }]);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    if (!input.trim() || !connected) return;
-
-    addOutput(`$ ${input}`, 'input');
-    
-    socketRef.current.emit('terminal_input', {
-      input: input.trim()
-    });
-
+    socketRef.current.emit('terminal_input', { input: cmd });
+    setHistory(prev => [cmd, ...prev.slice(0, 200)]);
+    setHistIdx(-1);
     setInput('');
   };
 
-  const clearTerminal = () => {
-    setOutput([]);
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submit();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHistIdx(prev => {
+        const next = Math.min(prev + 1, history.length - 1);
+        setInput(history[next] ?? '');
+        return next;
+      });
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHistIdx(prev => {
+        const next = Math.max(prev - 1, -1);
+        setInput(next === -1 ? '' : (history[next] ?? ''));
+        return next;
+      });
+    } else if (e.key === 'c' && e.ctrlKey) {
+      e.preventDefault();
+      push(`${PROMPT} ${input}^C`, 'cmd');
+      setInput('');
+      setHistIdx(-1);
+    }
   };
 
   return (
-    <div className="card terminal-container">
-      <div className="terminal-header">
-        <h2>
-          <TerminalIcon size={24} />
-          Remote Terminal
-        </h2>
-
-        <div className="terminal-controls">
-          <div className="connection-status">
-            <span className={`status-dot ${connected ? 'online' : 'danger'}`}></span>
-            <span>{connected ? 'Connected' : 'Disconnected'}</span>
-          </div>
-          <button 
-            className="btn btn-secondary" 
-            onClick={clearTerminal}
-          >
-            Clear
-          </button>
+    <div className="xterm-window">
+      {/* Title bar */}
+      <div className="xterm-titlebar">
+        <div className="xterm-dots">
+          <span className="xterm-dot xterm-close" />
+          <span className="xterm-dot xterm-minimize" />
+          <span className="xterm-dot xterm-maximize" />
+        </div>
+        <span className="xterm-title">k1taru@raspy — bash</span>
+        <div className="xterm-titlebar-right">
+          <span className={`xterm-conn ${connected ? 'online' : 'offline'}`}>
+            {connected ? '● connected' : '○ disconnected'}
+          </span>
+          <button className="xterm-clear-btn" onClick={() => setLines([])}>clear</button>
         </div>
       </div>
 
-      <div className="warning-banner">
-        <AlertTriangle size={16} />
-        <span>Warning: Commands execute with current user privileges. Use with caution.</span>
-      </div>
-
-      <div className="terminal-output" ref={outputRef}>
-        {output.map((line) => (
-          <div key={line.id} className={`terminal-line ${line.type}`}>
-            {line.type === 'input' && <span className="prompt">→ </span>}
-            {line.type === 'system' && <span className="system-prefix">[SYSTEM] </span>}
-            {line.type === 'error' && <span className="error-prefix">[ERROR] </span>}
-            <span className="terminal-text">{line.text}</span>
+      {/* Body — click anywhere to focus input */}
+      <div
+        className="xterm-body"
+        ref={bodyRef}
+        onClick={() => inputRef.current?.focus()}
+      >
+        {lines.map(line => (
+          <div key={line.id} className={`xterm-line xterm-${line.type}`}>
+            <span className="xterm-text">{line.text}</span>
           </div>
         ))}
-        
-        {output.length === 0 && (
-          <div className="terminal-welcome">
-            <p>╔══════════════════════════════════════╗</p>
-            <p>║   RASPY MONITOR REMOTE TERMINAL     ║</p>
-            <p>║   Secure Shell Access v1.0          ║</p>
-            <p>╚══════════════════════════════════════╝</p>
-            <p></p>
-            <p>Type your commands below...</p>
-          </div>
-        )}
-      </div>
 
-      <form className="terminal-input-container" onSubmit={handleSubmit}>
-        <span className="terminal-prompt">$</span>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Enter command..."
-          disabled={!connected}
-          className="terminal-input"
-          autoComplete="off"
-          spellCheck="false"
-        />
-        <button 
-          type="submit" 
-          className="btn btn-primary"
-          disabled={!connected || !input.trim()}
-        >
-          <Send size={16} />
-          Send
-        </button>
-      </form>
-
-      <div className="terminal-footer">
-        <p className="text-muted">
-          Common commands: <code>ls</code>, <code>pwd</code>, <code>top</code>, 
-          <code>df -h</code>, <code>free -h</code>, <code>uptime</code>
-        </p>
+        {/* Live input line */}
+        <div className="xterm-input-line">
+          <span className="xterm-prompt">{PROMPT}&nbsp;</span>
+          <input
+            ref={inputRef}
+            className="xterm-input"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={!connected}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+          />
+        </div>
       </div>
     </div>
   );
