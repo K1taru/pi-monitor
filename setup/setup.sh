@@ -88,7 +88,7 @@ echo "[1/6] Building frontend..."
 su - "$USERNAME" -c "
     # Source nvm if installed (common on Pi / user installs)
     [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"
-    cd '$FRONTEND_DIR' && npm ci && npm run build
+    cd '$FRONTEND_DIR' && npm install && npm run build
 "
 echo "[ok] Frontend built"
 
