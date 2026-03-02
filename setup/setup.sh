@@ -85,10 +85,7 @@ cd "$PROJECT_DIR"
 # 1. Frontend build
 # ========================================
 echo "[1/6] Building frontend..."
-cd "$FRONTEND_DIR"
-sudo -u "$USERNAME" npm ci
-sudo -u "$USERNAME" npm run build
-cd "$PROJECT_DIR"
+su - "$USERNAME" -c "cd '$FRONTEND_DIR' && npm ci && npm run build"
 echo "[ok] Frontend built"
 
 # ========================================
