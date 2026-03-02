@@ -4,6 +4,8 @@ System control routes — /api/system/*  (admin only)
 import glob
 import os
 import subprocess
+import threading
+import time
 from flask import Blueprint, jsonify, request
 
 from decorators import admin_required
@@ -22,6 +24,28 @@ def _find_fan_hwmon():
             return path
     return None
 
+
+def fan_boost_on_start(duration: int = 180):
+    """Run fan at 100% for `duration` seconds on startup, then return to auto.
+
+    Runs in a background daemon thread — call once from app.py.
+    """
+    def _boost():
+        try:
+            subprocess.run(['sudo', _FAN_CONTROL_BIN, 'write-pwm', '255'],
+                           check=True, capture_output=True, text=True)
+            subprocess.run(['sudo', _FAN_CONTROL_BIN, 'write-mode', '1'],
+                           check=True, capture_output=True, text=True)
+            print(f'[fan] Boost started — max speed for {duration}s')
+            time.sleep(duration)
+            subprocess.run(['sudo', _FAN_CONTROL_BIN, 'write-mode', '2'],
+                           check=True, capture_output=True, text=True)
+            print('[fan] Boost finished — returned to auto')
+        except Exception as e:
+            print(f'[fan] Boost error: {e}')
+
+    t = threading.Thread(target=_boost, daemon=True, name='fan-boost')
+    t.start()
 
 @system_bp.route('/governor', methods=['GET', 'POST'])
 @admin_required

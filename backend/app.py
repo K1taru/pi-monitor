@@ -15,7 +15,7 @@ from database import init_db
 from metrics import start_collector
 from routes.auth import auth_bp
 from routes.metrics import metrics_bp
-from routes.system import system_bp
+from routes.system import system_bp, fan_boost_on_start
 from routes.frontend import frontend_bp
 from sockets.terminal import register_handlers
 
@@ -46,6 +46,7 @@ def create_app() -> Flask:
     # Database & background collector
     init_db()
     start_collector()
+    fan_boost_on_start(duration=180)  # Max fan speed for first 3 minutes
 
     return app
 
@@ -57,4 +58,4 @@ if __name__ == '__main__':
     debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
     print(f"Starting Raspberry Pi Monitor Backend on port {port}...")
     print("Default credentials: admin / admin123 (PLEASE CHANGE!)")
-    socketio.run(app, host='0.0.0.0', port=port, debug=debug)
+    socketio.run(app, host='0.0.0.0', port=port, debug=debug, allow_unsafe_werkzeug=True)
