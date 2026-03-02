@@ -50,7 +50,7 @@ app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=12)
 # Defaults to localhost in development; set explicitly in production.
 _cors_origins = os.environ.get('CORS_ORIGINS', 'http://localhost:5173').split(',')
 CORS(app, resources={r"/api/*": {"origins": _cors_origins}})
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+socketio = SocketIO(app, cors_allowed_origins=_cors_origins, async_mode='threading')
 jwt = JWTManager(app)
 
 # Database initialization
@@ -485,6 +485,8 @@ def health_check():
     }), 200
 
 if __name__ == '__main__':
-    print("Starting Raspberry Pi Monitor Backend...")
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    print(f"Starting Raspberry Pi Monitor Backend on port {port}...")
     print("Default credentials: admin / admin123 (PLEASE CHANGE!)")
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=port, debug=debug)

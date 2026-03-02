@@ -40,7 +40,6 @@ logs/
 
 # Cloudflare
 .cloudflared/
-*.json
 
 # System
 .Trash-*/
