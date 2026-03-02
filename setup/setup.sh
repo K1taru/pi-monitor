@@ -99,9 +99,15 @@ echo "[ok] Backend dependencies installed"
 # 2. Frontend build
 # ========================================
 echo "[2/6] Building frontend..."
+if ! command -v npm &> /dev/null; then
+    echo "ERROR: npm is not installed. Install Node.js first:" >&2
+    echo "       curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -" >&2
+    echo "       sudo apt-get install -y nodejs" >&2
+    exit 1
+fi
 cd "$FRONTEND_DIR"
-npm ci       > /dev/null 2>&1
-npm run build > /dev/null 2>&1
+npm ci
+npm run build
 cd "$PROJECT_DIR"
 echo "[ok] Frontend built"
 
