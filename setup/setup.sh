@@ -99,11 +99,15 @@ echo "[ok] Backend dependencies installed"
 # 2. Frontend build
 # ========================================
 echo "[2/6] Building frontend..."
-# Resolve npm as the target user (sudo strips PATH, so npm may not be visible to root)
-NPM_CMD=$(sudo -u "$USERNAME" bash -lc "which npm 2>/dev/null || command -v npm 2>/dev/null" 2>/dev/null || true)
+# Resolve npm — sudo strips PATH, so check user login shell first then fall back to common system paths
+NPM_CMD=$(
+    sudo -u "$USERNAME" bash -lc "which npm 2>/dev/null" 2>/dev/null \
+    || which npm 2>/dev/null \
+    || find /usr/bin /usr/local/bin /opt/local/bin -name npm -type f 2>/dev/null | head -1 \
+    || true
+)
 if [ -z "$NPM_CMD" ]; then
-    echo "ERROR: npm is not installed or not on PATH for user '$USERNAME'." >&2
-    echo "       Install Node.js with:" >&2
+    echo "ERROR: npm not found. Install Node.js first:" >&2
     echo "         curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -" >&2
     echo "         sudo apt-get install -y nodejs" >&2
     exit 1

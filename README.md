@@ -41,44 +41,54 @@ pi-monitor/
 │   │   └── frontend.py      # SPA catch-all + /api/health
 │   ├── sockets/
 │   │   └── terminal.py      # WebSocket terminal
+│   ├── scripts/
+│   │   ├── fan-control.sh   # Fan PWM wrapper (installed to /usr/local/bin)
+│   │   └── gov-control.sh   # CPU governor wrapper (installed to /usr/local/bin)
 │   ├── requirements.txt
-│   └── .env                 # secrets (gitignored)
+│   └── .env                 # secrets — copy from .env.example (gitignored)
 ├── frontend/
 │   ├── src/
 │   │   ├── App.jsx
 │   │   ├── pages/           # Login, Dashboard
 │   │   └── components/      # Terminal, SystemChart, ProcessList, SystemControls
 │   ├── package.json
-│   ├── vite.config.js
-│   └── .env                 # VITE_API_URL (gitignored)
-├── deploy/
-│   ├── raspy-monitor.service    # systemd unit
-│   └── raspy-monitor-sudoers    # passwordless governor + reboot
-└── docs/
-    └── SETUP.md                 # Full manual setup guide
+│   └── vite.config.js
+├── setup/
+│   ├── setup.sh             # One-shot automated setup script
+│   ├── init-users.sh        # Re-initialize users from .env
+│   ├── pi-monitor.service   # systemd unit template
+│   ├── pi-monitor-sudoers   # sudoers template
+│   └── SETUP.md             # Full setup guide
+└── .gitattributes           # Enforces LF line endings for shell scripts
 ```
 
 ## Quick start
 
-See [docs/SETUP.md](docs/SETUP.md) for the full step-by-step guide.
+See [setup/SETUP.md](setup/SETUP.md) for the full step-by-step guide.
 
 ```bash
-# Backend
-cd backend
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-# Create .env with SECRET_KEY, JWT_SECRET_KEY, PORT=8001, CORS_ORIGINS
-python app.py
+# 1. Clone the repo
+git clone <your-repo-url> ~/pi-monitor
+cd ~/pi-monitor
 
-# Frontend
-cd frontend
-echo "VITE_API_URL=https://raspy.gymms.space" > .env
-npm ci && npm run build
+# 2. Copy and fill in your .env
+cp backend/.env.example backend/.env
+# Edit backend/.env — set SECRET_KEY, JWT_SECRET_KEY, DEFAULT_USERS at minimum
+
+# 3. Run the one-shot setup script (fix line endings first if cloned on Windows)
+sed -i 's/\r$//' setup/setup.sh && chmod +x setup/setup.sh
+sudo ./setup/setup.sh <your-linux-username>
 ```
+
+## Prerequisites
+
+- Python 3.9+
+- Node.js + npm (install via `sudo apt-get install -y nodejs` or [NodeSource](https://github.com/nodesource/distributions))
+- `git`
 
 ## Default credentials
 
-`admin` / `admin123` — **change immediately after first login.**
+Set in `backend/.env` via `DEFAULT_USERS`. No hard-coded defaults — you define them before first run.
 
 ## License
 
