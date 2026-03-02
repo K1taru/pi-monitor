@@ -99,15 +99,19 @@ echo "[ok] Backend dependencies installed"
 # 2. Frontend build
 # ========================================
 echo "[2/6] Building frontend..."
-if ! command -v npm &> /dev/null; then
-    echo "ERROR: npm is not installed. Install Node.js first:" >&2
-    echo "       curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -" >&2
-    echo "       sudo apt-get install -y nodejs" >&2
+# Resolve npm as the target user (sudo strips PATH, so npm may not be visible to root)
+NPM_CMD=$(sudo -u "$USERNAME" bash -lc "which npm 2>/dev/null || command -v npm 2>/dev/null" 2>/dev/null || true)
+if [ -z "$NPM_CMD" ]; then
+    echo "ERROR: npm is not installed or not on PATH for user '$USERNAME'." >&2
+    echo "       Install Node.js with:" >&2
+    echo "         curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -" >&2
+    echo "         sudo apt-get install -y nodejs" >&2
     exit 1
 fi
+echo "      Using npm: $NPM_CMD"
 cd "$FRONTEND_DIR"
-npm ci
-npm run build
+sudo -u "$USERNAME" "$NPM_CMD" ci
+sudo -u "$USERNAME" "$NPM_CMD" run build
 cd "$PROJECT_DIR"
 echo "[ok] Frontend built"
 
