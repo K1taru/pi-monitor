@@ -14,9 +14,9 @@ system_bp = Blueprint('system', __name__, url_prefix='/api/system')
 
 _GOVERNOR_PATH   = '/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor'
 _AVAILABLE_PATH  = '/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors'
-_FAN_CONTROL_BIN = '/usr/local/bin/raspy-fan-control'
-_GOV_CONTROL_BIN = '/usr/local/bin/raspy-gov-control'
-_HWMON_CACHE     = '/run/raspy-fan-hwmon'
+_FAN_CONTROL_BIN = os.environ.get('FAN_CONTROL_BIN', '/usr/local/bin/pi-monitor-fan-control')
+_GOV_CONTROL_BIN = os.environ.get('GOV_CONTROL_BIN', '/usr/local/bin/pi-monitor-gov-control')
+_HWMON_CACHE     = '/run/pi-monitor-fan-hwmon'
 
 # Module-level cache — populated once, revalidated only when the path disappears.
 _fan_hwmon_cached: str | None = None

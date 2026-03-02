@@ -1,26 +1,43 @@
-# Pi Monitor — Manual Setup on Raspberry Pi 5
+# Pi Monitor — Setup Guide
 
-All commands run on the Pi as user `k1taru`.
-Project lives at `/home/k1taru/pi-monitor/`.
-
----
-
-## Prerequisites
-
-```bash
-sudo apt update && sudo apt install -y python3 python3-venv nodejs npm git
-```
-
-Verify:
-
-```bash
-python3 --version   # 3.11+
-node -v             # 18+
-```
+This guide covers installation on a Raspberry Pi (or any Linux system) with proper user/home directory support and multi-user capability.
 
 ---
 
-## 1. Clone the repo
+## Quick Start (Recommended)
+
+For most users, run the automated setup script:
+
+```bash
+# On the Pi as root:
+cd ~<username>/pi-monitor  # or wherever you cloned it
+sudo setup/setup.sh <username>
+
+# Example:
+sudo setup/setup.sh k1taru
+```
+
+The script will:
+1. Create Python venv and install dependencies
+2. Build the frontend
+3. Install system binaries (`pi-monitor-fan-control`, `pi-monitor-gov-control`)
+4. Install sudoers configuration
+5. Create a systemd service
+6. Initialize the database with users from `.env`
+
+Then start the service:
+```bash
+sudo systemctl start pi-monitor-k1taru
+sudo systemctl status pi-monitor-k1taru
+```
+
+---
+
+## Manual Setup (Step-by-Step)
+
+If you prefer to set up manually, follow these steps:
+
+### 1. Clone and prepare
 
 ```bash
 cd ~
@@ -28,137 +45,173 @@ git clone <your-repo-url> pi-monitor
 cd pi-monitor
 ```
 
----
-
-## 2. Backend
-
-### Virtual environment & dependencies
+### 2. Backend setup
 
 ```bash
-cd ~/pi-monitor/backend
+cd backend
+
+# Create virtual environment
 python3 -m venv venv
 source venv/bin/activate
+
+# Install dependencies
 pip install --upgrade pip
 pip install -r requirements.txt
+
+# Generate secrets for .env
+python3 -c "import secrets; print('SECRET_KEY=' + secrets.token_hex(32))"
+python3 -c "import secrets; print('JWT_SECRET_KEY=' + secrets.token_hex(32))"
 ```
 
-### Environment file
+### 3. Create `.env` with users
 
-Create `backend/.env`:
+Copy `.env.example` and customize:
 
 ```bash
-cat > .env << 'EOF'
-SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")
-JWT_SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")
-PORT=8001
-CORS_ORIGINS=https://raspy.gymms.space
-EOF
+cp .env.example .env
 ```
 
-Or generate the keys manually:
-
-```bash
-python3 -c "import secrets; print(secrets.token_hex(32))"
-```
-
-and paste them into the file:
+Edit `backend/.env`:
 
 ```dotenv
-SECRET_KEY=<paste-here>
-JWT_SECRET_KEY=<paste-here>
+SECRET_KEY=<generated-above>
+JWT_SECRET_KEY=<generated-above>
 PORT=8001
-CORS_ORIGINS=https://raspy.gymms.space
+CORS_ORIGINS=https://raspy.gymms.space,http://localhost:3000
+
+# Define users to create on startup
+# Format: username:password:is_admin;username:password:is_admin
+DEFAULT_USERS=k1taru:mypassword:1;guest:guestpass:0
 ```
 
-### Quick test
+### 4. Frontend setup
 
 ```bash
-source venv/bin/activate
-python app.py
-# Should print "Starting Raspberry Pi Monitor Backend on port 8001..."
-# Ctrl+C to stop
-```
-
----
-
-## 3. Frontend
-
-```bash
-cd ~/pi-monitor/frontend
-```
-
-Create `frontend/.env`:
-
-```bash
-echo "VITE_API_URL=https://raspy.gymms.space" > .env
-```
-
-Build:
-
-```bash
+cd frontend
 npm ci
 npm run build
 ```
 
-The output goes to `frontend/dist/` — Flask serves it automatically.
-
----
-
-## 4. Sudoers (passwordless governor + fan + reboot)
+### 5. System binaries and sudoers
 
 ```bash
-# Install the fan control wrapper (required for fan PWM writes)
-sudo install -m 0755 ~/pi-monitor/deploy/fan-control.sh /usr/local/bin/raspy-fan-control
+# Install the wrapper scripts (live in backend/scripts/)
+sudo install -m 0755 ~/pi-monitor/backend/scripts/fan-control.sh /usr/local/bin/pi-monitor-fan-control
+sudo install -m 0755 ~/pi-monitor/backend/scripts/gov-control.sh /usr/local/bin/pi-monitor-gov-control
 
-# Install the CPU governor wrapper (required for governor changes)
-sudo install -m 0755 ~/pi-monitor/deploy/gov-control.sh /usr/local/bin/raspy-gov-control
+# Create sudoers configuration for your user (replace 'k1taru' with your username)
+sudo tee /etc/sudoers.d/pi-monitor-k1taru > /dev/null << 'EOF'
+k1taru ALL=(root) NOPASSWD: /usr/local/bin/pi-monitor-gov-control
+k1taru ALL=(root) NOPASSWD: /usr/local/bin/pi-monitor-fan-control
+k1taru ALL=(root) NOPASSWD: /usr/sbin/reboot
+EOF
 
-# Install the sudoers drop-in
-sudo install -m 0440 ~/pi-monitor/deploy/raspy-monitor-sudoers /etc/sudoers.d/raspy-monitor
-sudo visudo -c   # verify no errors
+sudo chmod 0440 /etc/sudoers.d/pi-monitor-k1taru
+sudo visudo -c  # verify no errors
 ```
 
-This grants `k1taru` passwordless access to:
-
-- `sudo /usr/local/bin/raspy-gov-control` — CPU governor
-- `sudo /usr/local/bin/raspy-fan-control` — fan PWM control
-- `sudo reboot`
-
----
-
-## 5. Systemd service
-
-### Install
+### 6. Database initialization
 
 ```bash
-sudo cp ~/pi-monitor/deploy/raspy-monitor.service /etc/systemd/system/
+cd ~/pi-monitor/backend
+source venv/bin/activate
+
+# Initialize database with users from .env
+./../../setup/init-users.sh
+```
+
+Or manually with Python:
+```bash
+python3 -c "from database import init_db; init_db()"
+```
+
+### 7. Systemd service
+
+Create `/etc/systemd/system/pi-monitor-k1taru.service`:
+
+```ini
+[Unit]
+Description=Raspberry Pi Monitor Backend (k1taru)
+After=network.target
+
+[Service]
+Type=simple
+User=k1taru
+WorkingDirectory=/home/k1taru/pi-monitor/backend
+
+EnvironmentFile=/home/k1taru/pi-monitor/backend/.env
+
+ExecStart=/home/k1taru/pi-monitor/backend/venv/bin/python app.py
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then enable and start:
+```bash
 sudo systemctl daemon-reload
-sudo systemctl enable raspy-monitor
-sudo systemctl start raspy-monitor
-```
-
-### Verify
-
-```bash
-systemctl status raspy-monitor
-```
-
-### Useful commands
-
-```bash
-# View live logs
-journalctl -u raspy-monitor -f
-
-# Restart after code changes
-sudo systemctl restart raspy-monitor
-
-# Stop
-sudo systemctl stop raspy-monitor
+sudo systemctl enable pi-monitor-k1taru
+sudo systemctl start pi-monitor-k1taru
 ```
 
 ---
 
-## 6. Cloudflared tunnel
+## User Management
+
+### Reset users from `.env`
+
+If you need to reinitialize the user database from your `.env` file:
+
+```bash
+cd ~/pi-monitor/backend
+source venv/bin/activate
+../../setup/init-users.sh
+```
+
+Or to completely reset (delete old DB):
+```bash
+../../setup/init-users.sh --reset
+```
+
+### Change user password at runtime
+
+```bash
+curl -X POST https://raspy.gymms.space/api/auth/change-password \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"old_password":"current","new_password":"newpassword"}'
+```
+
+---
+
+## Multi-User Setup
+
+You can run multiple instances for different users on the same Pi:
+
+1. For each user, run:
+   ```bash
+   sudo setup/setup.sh <username>
+   ```
+
+2. Each user gets:
+   - Their own systemd service: `pi-monitor-<username>`
+   - Their own `.env` file (different SECRET_KEY, PORT, users, etc.)
+   - Their own sudoers entry: `/etc/sudoers.d/pi-monitor-<username>`
+
+3. Start services independently:
+   ```bash
+   sudo systemctl start pi-monitor-k1taru
+   sudo systemctl start pi-monitor-guest
+   ```
+
+Just make sure each user's `.env` uses a different PORT if running locally.
+
+---
+
+## Cloudflared Tunnel (Optional)
 
 > Already configured to tunnel `https://raspy.gymms.space` → `localhost:8001`.
 
@@ -173,7 +226,7 @@ sudo dpkg -i cloudflared-linux-arm64.deb
 cloudflared tunnel login
 cloudflared tunnel create pi-monitor
 
-# Configure  ~/.cloudflared/config.yml
+# Configure ~/.cloudflared/config.yml
 tunnel: <tunnel-id>
 credentials-file: /home/k1taru/.cloudflared/<tunnel-id>.json
 
@@ -191,12 +244,32 @@ sudo systemctl start cloudflared
 
 ---
 
-## 7. Post-install
+## Post-Install
 
-1. Open `https://raspy.gymms.space`
-2. Login with `admin` / `admin123`
-3. **Change the password immediately** (Control panel)
-4. Verify all tabs work: Overview, Charts, Processes, Terminal, Control
+1. Open `https://raspy.gymms.space` (or `http://localhost:8001` locally)
+2. Login with credentials from `DEFAULT_USERS` in `.env`
+3. **Change passwords immediately** via the Control panel
+4. Verify all features work: Overview, Charts, Processes, Terminal, Control
+
+---
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| Script says user not found | Verify user exists: `id username`; check home dir: `ls ~username` |
+| "Permission denied" when running setup.sh | Must run with sudo: `sudo setup/setup.sh k1taru` |
+| Service won't start | `sudo journalctl -u pi-monitor-k1taru -n 50 --no-pager` |
+| Port in use | `sudo lsof -i :8001`; pick different port in `.env` |
+| Login fails with "Invalid credentials" | Check users in DB: `sqlite3 backend/raspy_monitor.db 'SELECT username, is_admin FROM users;'` |
+| Users not created from DEFAULT_USERS | Verify `.env` format: `username:password:is_admin;user2:pass2:1` (semicolons, no spaces around colons) |
+| Governor/fan error: "no new privileges" | Reinstalled service file; should be resolved |
+| Governor change fails | Verify: `sudo -l \| grep pi-monitor-gov-control`; check `/etc/sudoers.d/pi-monitor-<user>` exists |
+| Fan shows "not detected" | Check: `ls /sys/class/hwmon/hwmon*/pwm1` — Pi 5 fan must be plugged into fan header |
+| Fan write fails | Verify scripts: `ls -la /usr/local/bin/pi-monitor-*` (should be root, mode 755) |
+| WebSocket disconnect | Check CORS_ORIGINS in `.env` includes your domain; check token hasn't expired |
+| Frontend shows 404 | Rebuild: `cd frontend && npm ci && npm run build` |
+| Python module errors | Recreate venv: `rm -rf backend/venv && python3 -m venv backend/venv && source backend/venv/bin/activate && pip install -r backend/requirements.txt` |
 
 ---
 
@@ -210,24 +283,52 @@ git pull
 cd backend && source venv/bin/activate && pip install -r requirements.txt
 
 # If frontend changed:
-cd ~/pi-monitor/frontend && npm ci && npm run build
+cd frontend && npm ci && npm run build
 
-# Restart service
-sudo systemctl restart raspy-monitor
+# If database users need to be reset:
+setup/init-users.sh
+
+# Restart service:
+sudo systemctl restart pi-monitor-k1taru
 ```
 
 ---
 
-## Troubleshooting
+## Sharing Your Setup
 
-| Problem | Fix |
-|---|---|
-| Service won't start | `journalctl -u raspy-monitor -n 50 --no-pager` |
-| Port in use | `sudo lsof -i :8001` |
-| Governor/fan error: "no new privileges" | Unit has `NoNewPrivileges=yes` — reinstall with `deploy/raspy-monitor.service` which omits that flag |
-| Governor change fails | `sudo -l` — check sudoers is installed; also verify `raspy-gov-control` is installed to `/usr/local/bin/` |
-| Fan shows "not detected" | Run `ls /sys/class/hwmon/hwmon*/pwm1` — Pi 5 fan must be plugged into the fan header |
-| Fan write fails | Ensure `fan-control.sh` was installed to `/usr/local/bin/raspy-fan-control` with mode 0755 |
-| WebSocket disconnect | Check token validity, check CORS_ORIGINS in `.env` |
-| Frontend 404 | Rebuild: `cd frontend && npm run build` |
-| Python import errors | Activate venv: `source backend/venv/bin/activate` |
+To share your setup with others:
+
+1. **Share the repo** (GitHub, etc.)
+2. **Share your `.env` template** (with secrets removed):
+   ```bash
+   # In the repo root
+   cp backend/.env backend/.env.prod
+   # Edit backend/.env.prod to remove SECRET_KEY, JWT_SECRET_KEY
+   # Users will copy this as their starting point
+   ```
+3. **Users clone and run:**
+   ```bash
+   cd ~/pi-monitor
+   sudo setup/setup.sh myusername
+   ```
+
+---
+
+## Notes
+
+- **User credentials in `.env`**: Keep `.env` out of git for security. Use `.env.example` as a template.
+- **Per-user services**: Multiple users can run independent instances with different settings.
+- **SSH into your Pi**: 
+  ```bash
+  ssh k1taru@raspy.local
+  sudo systemctl status pi-monitor-k1taru
+  sudo journalctl -u pi-monitor-k1taru -f
+  ```
+- **Database**: Stored at `~/pi-monitor/backend/raspy_monitor.db` (SQLite3) — inspect with:
+  ```bash
+  sqlite3 ~/pi-monitor/backend/raspy_monitor.db
+  sqlite> SELECT * FROM users;
+  sqlite> .quit
+  ```
+
+

@@ -117,15 +117,13 @@ def store_metrics():
                 m['disk']['percent'],
             ),
         )
-        conn.commit()
 
 
 def cleanup_old_metrics():
     """Delete metrics older than 24 hours."""
     cutoff = (datetime.now() - timedelta(hours=24)).isoformat()
     with db_connection() as conn:
-        conn.execute("DELETE FROM metrics_history WHERE timestamp < ?", (cutoff,))
-        conn.commit()
+        conn.execute('DELETE FROM metrics_history WHERE timestamp < ?', (cutoff,))
 
 
 # ---------------------------------------------------------------------------

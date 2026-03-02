@@ -1,23 +1,24 @@
 #!/bin/bash
-# raspy-fan-control — privileged wrapper for Pi fan PWM control
+# pi-monitor-fan-control — privileged wrapper for Pi fan PWM control
 #
 # Install with:
-#   sudo install -m 0755 deploy/fan-control.sh /usr/local/bin/raspy-fan-control
+#   sudo install -m 0755 backend/scripts/fan-control.sh /usr/local/bin/pi-monitor-fan-control
+#   (setup.sh does this automatically)
 #
 # Usage:
-#   raspy-fan-control write-pwm <0-255>
-#   raspy-fan-control write-mode <0|1|2>    (0=off, 1=manual, 2=auto)
-#   raspy-fan-control read-pwm
-#   raspy-fan-control read-mode
-#   raspy-fan-control read-rpm
+#   pi-monitor-fan-control write-pwm <0-255>
+#   pi-monitor-fan-control write-mode <0|1|2>    (0=off, 1=manual, 2=auto)
+#   pi-monitor-fan-control read-pwm
+#   pi-monitor-fan-control read-mode
+#   pi-monitor-fan-control read-rpm
 #
 # The hwmon index (hwmon0/hwmon1/hwmon2) is discovered once and cached to
-# /run/raspy-fan-hwmon.  The cache is re-validated on every invocation and
+# /run/pi-monitor-fan-hwmon.  The cache is re-validated on every invocation and
 # re-scanned only if the cached path no longer has pwm1 (e.g. after reboot).
 
 set -e
 
-_HWMON_CACHE=/run/raspy-fan-hwmon
+_HWMON_CACHE=/run/pi-monitor-fan-hwmon
 
 # ---------------------------------------------------------------------------
 # Resolve the hwmon directory — check cache first, scan only when needed.
@@ -78,7 +79,7 @@ case "$1" in
         fi
         ;;
     *)
-        echo "Usage: $0 write-pwm <0-255> | write-mode <0|1|2> | read-pwm | read-mode | read-rpm" >&2
+        echo "Usage: pi-monitor-fan-control write-pwm <0-255> | write-mode <0|1|2> | read-pwm | read-mode | read-rpm" >&2
         exit 1
         ;;
 esac

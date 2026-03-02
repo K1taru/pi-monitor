@@ -1,12 +1,13 @@
 #!/bin/bash
-# raspy-gov-control — privileged wrapper for CPU governor writes
+# pi-monitor-gov-control — privileged wrapper for CPU governor writes
 #
 # Install with:
-#   sudo install -m 0755 deploy/gov-control.sh /usr/local/bin/raspy-gov-control
+#   sudo install -m 0755 backend/scripts/gov-control.sh /usr/local/bin/pi-monitor-gov-control
+#   (setup.sh does this automatically)
 #
 # Usage:
-#   raspy-gov-control <governor>
-#   e.g. raspy-gov-control performance
+#   pi-monitor-gov-control <governor>
+#   e.g. pi-monitor-gov-control performance
 
 set -e
 

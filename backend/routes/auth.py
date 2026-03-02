@@ -23,19 +23,19 @@ def login():
 
     with db_connection() as conn:
         row = conn.execute(
-            "SELECT id, username, password_hash, is_admin FROM users WHERE username = ?",
+            'SELECT id, username, password_hash, is_admin FROM users WHERE username = ?',
             (username,),
         ).fetchone()
 
-    if row and check_password_hash(row[2], password):
+    if row and check_password_hash(row['password_hash'], password):
         token = create_access_token(
-            identity=str(row[0]),
-            additional_claims={'username': row[1], 'is_admin': bool(row[3])},
+            identity=str(row['id']),
+            additional_claims={'username': row['username'], 'is_admin': bool(row['is_admin'])},
         )
         return jsonify({
             'access_token': token,
-            'username':     row[1],
-            'is_admin':     bool(row[3]),
+            'username':     row['username'],
+            'is_admin':     bool(row['is_admin']),
         }), 200
 
     return jsonify({'error': 'Invalid credentials'}), 401
@@ -67,15 +67,14 @@ def change_password():
 
     with db_connection() as conn:
         row = conn.execute(
-            "SELECT password_hash FROM users WHERE id = ?", (user_id,)
+            'SELECT password_hash FROM users WHERE id = ?', (user_id,)
         ).fetchone()
 
-        if row and check_password_hash(row[0], old_password):
+        if row and check_password_hash(row['password_hash'], old_password):
             conn.execute(
-                "UPDATE users SET password_hash = ? WHERE id = ?",
+                'UPDATE users SET password_hash = ? WHERE id = ?',
                 (generate_password_hash(new_password), user_id),
             )
-            conn.commit()
             return jsonify({'message': 'Password changed successfully'}), 200
 
     return jsonify({'error': 'Invalid old password'}), 401

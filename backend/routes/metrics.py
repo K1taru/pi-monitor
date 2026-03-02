@@ -34,12 +34,12 @@ def get_metrics_history():
 
     history = [
         {
-            'timestamp':   r[0],
-            'cpu_temp':    r[1],
-            'cpu_freq':    r[2],
-            'cpu_percent': r[3],
-            'ram_percent': r[4],
-            'disk_percent':r[5],
+            'timestamp':    r['timestamp'],
+            'cpu_temp':     r['cpu_temp'],
+            'cpu_freq':     r['cpu_freq'],
+            'cpu_percent':  r['cpu_percent'],
+            'ram_percent':  r['ram_percent'],
+            'disk_percent': r['disk_percent'],
         }
         for r in rows
     ]

@@ -57,5 +57,12 @@ if __name__ == '__main__':
     port  = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
     print(f"Starting Raspberry Pi Monitor Backend on port {port}...")
-    print("Default credentials: admin / admin123 (PLEASE CHANGE!)")
+    
+    # Show user initialization info
+    default_users = os.environ.get('DEFAULT_USERS', '').strip()
+    if default_users:
+        print("Users will be initialized from DEFAULT_USERS env variable")
+    else:
+        print("No DEFAULT_USERS set; will use legacy admin account (admin / admin123)")
+    
     socketio.run(app, host='0.0.0.0', port=port, debug=debug, allow_unsafe_werkzeug=True)
