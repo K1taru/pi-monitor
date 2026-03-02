@@ -195,7 +195,7 @@ def cleanup_old_metrics():
     """Remove metrics older than 24 hours"""
     with db_connection() as conn:
         c = conn.cursor()
-        cutoff = datetime.now() - timedelta(hours=24)
+        cutoff = (datetime.now() - timedelta(hours=24)).isoformat()
         c.execute("DELETE FROM metrics_history WHERE timestamp < ?", (cutoff,))
         conn.commit()
 
@@ -294,7 +294,7 @@ def get_metrics_history():
     hours = request.args.get('hours', default=1, type=int)
     hours = min(hours, 24)  # Max 24 hours
     
-    cutoff = datetime.now() - timedelta(hours=hours)
+    cutoff = (datetime.now() - timedelta(hours=hours)).isoformat()
     
     with db_connection() as conn:
         c = conn.cursor()
@@ -483,6 +483,25 @@ def health_check():
         'status': 'healthy',
         'timestamp': datetime.now().isoformat()
     }), 200
+
+
+# Serve frontend static files (catch-all for SPA routing)
+_FRONTEND_DIR = os.path.abspath(
+    os.environ.get(
+        'FRONTEND_DIR',
+        os.path.join(os.path.dirname(__file__), '../frontend/dist')
+    )
+)
+
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_frontend(path):
+    """Serve the built React frontend."""
+    target = os.path.join(_FRONTEND_DIR, path)
+    if path and os.path.isfile(target):
+        return send_from_directory(_FRONTEND_DIR, path)
+    # Fall back to index.html for SPA client-side routing
+    return send_from_directory(_FRONTEND_DIR, 'index.html')
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
