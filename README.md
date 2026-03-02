@@ -4,16 +4,16 @@ Real-time system monitoring dashboard for Raspberry Pi 5.
 
 Live at **[raspy.gymms.space](https://raspy.gymms.space)**
 
-## What it does
+## Features
 
-- CPU temperature, frequency, per-core usage
+- CPU temperature, frequency, and per-core usage
 - Memory & disk stats
 - Network I/O counters
 - Historical charts (1h / 6h / 24h)
 - Top processes list
-- Remote terminal (admin)
-- CPU governor control & reboot (admin)
-- JWT authentication
+- Remote terminal *(admin only)*
+- CPU governor control & reboot *(admin only)*
+- JWT-based authentication
 
 ## Stack
 
@@ -62,33 +62,35 @@ pi-monitor/
 └── .gitattributes           # Enforces LF line endings for shell scripts
 ```
 
-## Quick start
-
-See [setup/SETUP.md](setup/SETUP.md) for the full step-by-step guide.
+## Quick Start
 
 ```bash
-# 1. Clone the repo
+# 1. Clone
 git clone <your-repo-url> ~/pi-monitor
 cd ~/pi-monitor
 
-# 2. Copy and fill in your .env
+# 2. Configure
 cp backend/.env.example backend/.env
-# Edit backend/.env — set SECRET_KEY, JWT_SECRET_KEY, DEFAULT_USERS at minimum
+nano backend/.env   # set SECRET_KEY, JWT_SECRET_KEY, DEFAULT_USERS
 
-# 3. Run the one-shot setup script (fix line endings first if cloned on Windows)
+# 3. Run setup
 sed -i 's/\r$//' setup/setup.sh && chmod +x setup/setup.sh
-sudo ./setup/setup.sh <your-linux-username>
+sudo ./setup/setup.sh k1taru
 ```
 
-## Prerequisites
+That's it. The script handles everything: frontend build, Python venv, system binaries, sudoers, systemd service, and database.
+
+See **[setup/SETUP.md](setup/SETUP.md)** for the full guide.
+
+## Requirements
 
 - Python 3.9+
-- Node.js + npm (install via `sudo apt-get install -y nodejs` or [NodeSource](https://github.com/nodesource/distributions))
-- `git`
+- Node.js + npm
+- Git
 
-## Default credentials
+## Credentials
 
-Set in `backend/.env` via `DEFAULT_USERS`. No hard-coded defaults — you define them before first run.
+Defined in `backend/.env` via `DEFAULT_USERS` — no hard-coded defaults.
 
 ## License
 
