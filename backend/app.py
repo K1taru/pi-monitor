@@ -9,7 +9,7 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, emit, disconnect
 from flask_jwt_extended import (
     JWTManager, create_access_token, jwt_required,
-    get_jwt_identity, verify_jwt_in_request
+    get_jwt_identity, get_jwt, verify_jwt_in_request
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
@@ -231,11 +231,13 @@ def login():
         user = c.fetchone()
     
     if user and check_password_hash(user[2], password):
-        access_token = create_access_token(identity={
-            'id': user[0],
-            'username': user[1],
-            'is_admin': bool(user[3])
-        })
+        access_token = create_access_token(
+            identity=str(user[0]),
+            additional_claims={
+                'username': user[1],
+                'is_admin': bool(user[3])
+            }
+        )
         return jsonify({
             'access_token': access_token,
             'username': user[1],
@@ -248,14 +250,19 @@ def login():
 @jwt_required()
 def verify_token():
     """Verify JWT token"""
-    current_user = get_jwt_identity()
-    return jsonify({'user': current_user}), 200
+    user_id = get_jwt_identity()
+    claims = get_jwt()
+    return jsonify({'user': {
+        'id': user_id,
+        'username': claims.get('username'),
+        'is_admin': claims.get('is_admin', False)
+    }}), 200
 
 @app.route('/api/auth/change-password', methods=['POST'])
 @jwt_required()
 def change_password():
     """Change user password"""
-    current_user = get_jwt_identity()
+    current_user_id = get_jwt_identity()
     data = request.get_json()
     old_password = data.get('old_password')
     new_password = data.get('new_password')
@@ -268,13 +275,13 @@ def change_password():
     
     with db_connection() as conn:
         c = conn.cursor()
-        c.execute("SELECT password_hash FROM users WHERE id = ?", (current_user['id'],))
+        c.execute("SELECT password_hash FROM users WHERE id = ?", (current_user_id,))
         user = c.fetchone()
         
         if user and check_password_hash(user[0], old_password):
             new_hash = generate_password_hash(new_password)
             c.execute("UPDATE users SET password_hash = ? WHERE id = ?", 
-                      (new_hash, current_user['id']))
+                      (new_hash, current_user_id))
             conn.commit()
             return jsonify({'message': 'Password changed successfully'}), 200
     
@@ -328,8 +335,8 @@ def admin_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         verify_jwt_in_request()
-        current_user = get_jwt_identity()
-        if not current_user.get('is_admin'):
+        claims = get_jwt()
+        if not claims.get('is_admin'):
             return jsonify({'error': 'Admin access required'}), 403
         return fn(*args, **kwargs)
     return wrapper
@@ -425,9 +432,8 @@ def handle_connect():
         # Manual JWT verification for WebSocket
         from flask_jwt_extended import decode_token
         decoded = decode_token(token)
-        user = decoded['sub']
         
-        if not user.get('is_admin'):
+        if not decoded.get('is_admin'):
             disconnect()
             return False
         
