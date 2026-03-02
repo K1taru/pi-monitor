@@ -63,6 +63,6 @@ if __name__ == '__main__':
     if default_users:
         print("Users will be initialized from DEFAULT_USERS env variable")
     else:
-        print("No DEFAULT_USERS set; will use legacy admin account (admin / admin123)")
+        print("[warn] DEFAULT_USERS is not set. No users will be created unless the DB already has accounts.")
     
     socketio.run(app, host='0.0.0.0', port=port, debug=debug, allow_unsafe_werkzeug=True)

@@ -93,7 +93,6 @@ function Login({ onLogin }) {
           </form>
 
           <div className="login-footer">
-            <p className="text-muted">Default: admin / admin123</p>
             <p className="text-muted">Change password after first login</p>
           </div>
         </div>
