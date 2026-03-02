@@ -82,9 +82,19 @@ echo ""
 cd "$PROJECT_DIR"
 
 # ========================================
-# 1. Python venv + dependencies
+# 1. Frontend build
 # ========================================
-echo "[1/6] Setting up Python backend..."
+echo "[1/6] Building frontend..."
+cd "$FRONTEND_DIR"
+sudo -u "$USERNAME" npm ci
+sudo -u "$USERNAME" npm run build
+cd "$PROJECT_DIR"
+echo "[ok] Frontend built"
+
+# ========================================
+# 2. Python venv + dependencies
+# ========================================
+echo "[2/6] Setting up Python backend..."
 
 if [ ! -d "$BACKEND_DIR/venv" ]; then
     python3 -m venv "$BACKEND_DIR/venv"
@@ -94,30 +104,6 @@ fi
 "$BACKEND_DIR/venv/bin/pip" install --upgrade pip > /dev/null 2>&1
 "$BACKEND_DIR/venv/bin/pip" install -r "$BACKEND_DIR/requirements.txt" > /dev/null 2>&1
 echo "[ok] Backend dependencies installed"
-
-# ========================================
-# 2. Frontend build
-# ========================================
-echo "[2/6] Building frontend..."
-# Resolve npm — sudo strips PATH, so check user login shell first then fall back to common system paths
-NPM_CMD=$(
-    sudo -u "$USERNAME" bash -lc "which npm 2>/dev/null" 2>/dev/null \
-    || which npm 2>/dev/null \
-    || find /usr/bin /usr/local/bin /opt/local/bin -name npm -type f 2>/dev/null | head -1 \
-    || true
-)
-if [ -z "$NPM_CMD" ]; then
-    echo "ERROR: npm not found. Install Node.js first:" >&2
-    echo "         curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -" >&2
-    echo "         sudo apt-get install -y nodejs" >&2
-    exit 1
-fi
-echo "      Using npm: $NPM_CMD"
-cd "$FRONTEND_DIR"
-sudo -u "$USERNAME" "$NPM_CMD" ci
-sudo -u "$USERNAME" "$NPM_CMD" run build
-cd "$PROJECT_DIR"
-echo "[ok] Frontend built"
 
 # ========================================
 # 3. System binaries
