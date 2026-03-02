@@ -110,6 +110,9 @@ The output goes to `frontend/dist/` — Flask serves it automatically.
 # Install the fan control wrapper (required for fan PWM writes)
 sudo install -m 0755 ~/pi-monitor/deploy/fan-control.sh /usr/local/bin/raspy-fan-control
 
+# Install the CPU governor wrapper (required for governor changes)
+sudo install -m 0755 ~/pi-monitor/deploy/gov-control.sh /usr/local/bin/raspy-gov-control
+
 # Install the sudoers drop-in
 sudo install -m 0440 ~/pi-monitor/deploy/raspy-monitor-sudoers /etc/sudoers.d/raspy-monitor
 sudo visudo -c   # verify no errors
@@ -117,7 +120,7 @@ sudo visudo -c   # verify no errors
 
 This grants `k1taru` passwordless access to:
 
-- `sudo tee /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor` — CPU governor
+- `sudo /usr/local/bin/raspy-gov-control` — CPU governor
 - `sudo /usr/local/bin/raspy-fan-control` — fan PWM control
 - `sudo reboot`
 
@@ -221,7 +224,8 @@ sudo systemctl restart raspy-monitor
 |---|---|
 | Service won't start | `journalctl -u raspy-monitor -n 50 --no-pager` |
 | Port in use | `sudo lsof -i :8001` |
-| Governor change fails | `sudo -l` — check sudoers is installed |
+| Governor/fan error: "no new privileges" | Unit has `NoNewPrivileges=yes` — reinstall with `deploy/raspy-monitor.service` which omits that flag |
+| Governor change fails | `sudo -l` — check sudoers is installed; also verify `raspy-gov-control` is installed to `/usr/local/bin/` |
 | Fan shows "not detected" | Run `ls /sys/class/hwmon/hwmon*/pwm1` — Pi 5 fan must be plugged into the fan header |
 | Fan write fails | Ensure `fan-control.sh` was installed to `/usr/local/bin/raspy-fan-control` with mode 0755 |
 | WebSocket disconnect | Check token validity, check CORS_ORIGINS in `.env` |

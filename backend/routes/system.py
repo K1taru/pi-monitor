@@ -112,7 +112,8 @@ def cpu_governor():
         )
         return jsonify({'message': f'Governor set to {governor}'}), 200
     except (OSError, subprocess.CalledProcessError) as e:
-        return jsonify({'error': str(e)}), 500
+        err = getattr(e, 'stderr', None) or str(e)
+        return jsonify({'error': err}), 500
 
 
 @system_bp.route('/fan', methods=['GET', 'POST'])
