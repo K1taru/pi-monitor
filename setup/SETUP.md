@@ -62,10 +62,13 @@ The script automatically:
 
 ```bash
 # Check service is running
-sudo systemctl status pi-monitor-k1taru
+sudo systemctl status pi-monitor
 
 # Watch live logs
-sudo journalctl -u pi-monitor-k1taru -f
+sudo journalctl -u pi-monitor -f
+
+# Verbose ops log (separate from journalctl — tracks every DB/API action)
+tail -f ~/pi-monitor/backend/logs/pi-monitor-ops.log
 
 # Open in browser
 http://<pi-ip>:8001
@@ -79,16 +82,19 @@ Login with the credentials you set in `DEFAULT_USERS`.
 
 ```bash
 # Service control
-sudo systemctl start pi-monitor-k1taru
-sudo systemctl stop pi-monitor-k1taru
-sudo systemctl restart pi-monitor-k1taru
-sudo systemctl status pi-monitor-k1taru
+sudo systemctl start pi-monitor
+sudo systemctl stop pi-monitor
+sudo systemctl restart pi-monitor
+sudo systemctl status pi-monitor
 
 # Live logs
-sudo journalctl -u pi-monitor-k1taru -f
+sudo journalctl -u pi-monitor -f
+
+# Verbose ops log (DB calls, logins, fan/governor changes, metrics)
+tail -f ~/pi-monitor/backend/logs/pi-monitor-ops.log
 
 # Check what users are in the database
-sqlite3 ~/pi-monitor/backend/raspy_monitor.db 'SELECT username, is_admin FROM users;'
+sqlite3 ~/pi-monitor/backend/monitor.db 'SELECT username, is_admin FROM users;'
 
 # SSH into the Pi
 ssh k1taru@raspy.local
@@ -120,19 +126,18 @@ curl -X POST http://localhost:8001/api/auth/change-password \
 
 ## Multi-User Setup
 
-Each user gets their own isolated service. Just run setup once per user:
+Each user shares the same service (`pi-monitor`). Run setup with the Linux user
+that should own the process; that user's `.env` will be used.
 
 ```bash
 sudo ./setup/setup.sh alice
-sudo ./setup/setup.sh bob
 ```
 
-Each user gets:
-- Their own service: `pi-monitor-alice`, `pi-monitor-bob`
-- Their own `.env` (different secrets, ports, user accounts)
-- Their own sudoers entry
+If you want genuinely separate instances (different ports, isolated DB), deploy
+the repo to separate directories and give each its own `.env` with a different
+`PORT`. Then re-run setup for each user.
 
-> Make sure each user's `backend/.env` has a different `PORT`.
+> Make sure each instance's `backend/.env` has a different `PORT`.
 
 ---
 
@@ -167,7 +172,7 @@ sudo systemctl enable --now cloudflared
 
 ## Post-Install Checklist
 
-- [ ] Service is running: `sudo systemctl status pi-monitor-<username>`
+- [ ] Service is running: `sudo systemctl status pi-monitor`
 - [ ] Dashboard loads at `http://<pi-ip>:8001`
 - [ ] Login works with credentials from `DEFAULT_USERS`
 - [ ] Change your password via the Control panel
@@ -181,11 +186,11 @@ sudo systemctl enable --now cloudflared
 |---|---|
 | `command not found` on setup.sh | Run `sed -i 's/\r$//' setup/setup.sh && chmod +x setup/setup.sh` first (Windows line endings) |
 | `npm: command not found` during setup | Install Node.js: `curl -fsSL https://deb.nodesource.com/setup_lts.x \| sudo -E bash - && sudo apt-get install -y nodejs` |
-| Service won't start | `sudo journalctl -u pi-monitor-k1taru -n 50 --no-pager` |
+| Service won't start | `sudo journalctl -u pi-monitor -n 50 --no-pager` |
 | Port already in use | `sudo lsof -i :8001`; change `PORT` in `.env` and rerun setup |
-| Login fails | Check DB: `sqlite3 backend/raspy_monitor.db 'SELECT username, is_admin FROM users;'` |
-| Users not created | Check `.env` format: `username:password:1;user2:pass2:0` (semicolons, no spaces) |
-| Governor/fan control fails | Check: `sudo -l \| grep pi-monitor`; verify `/etc/sudoers.d/pi-monitor-k1taru` exists |
+| Login fails | Check DB: `sqlite3 backend/monitor.db 'SELECT username, is_admin FROM users;'` |
+| Users not created | Re-run: `cd ~/pi-monitor && setup/init-users.sh`; check `.env` format: `username:password:1` |
+| Governor/fan control fails | Check: `sudo -l \| grep pi-monitor`; verify `/etc/sudoers.d/pi-monitor` exists |
 | Fan not detected | Check: `ls /sys/class/hwmon/hwmon*/pwm1` — Pi 5 fan must be in the fan header |
 | Frontend shows 404 | Rebuild: `cd ~/pi-monitor/frontend && npm install && npm run build` |
 | Python import errors | Recreate venv: `rm -rf backend/venv && python3 -m venv backend/venv && backend/venv/bin/pip install -r backend/requirements.txt` |
@@ -206,7 +211,7 @@ backend/venv/bin/pip install -r backend/requirements.txt
 cd frontend && npm install && npm run build && cd ..
 
 # Restart the service
-sudo systemctl restart pi-monitor-k1taru
+sudo systemctl restart pi-monitor
 
 # To reset database users from .env (non-destructive)
 setup/init-users.sh

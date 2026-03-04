@@ -63,7 +63,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 RESET = int(sys.argv[1]) if len(sys.argv) > 1 else 0
-DB_PATH = os.environ.get('DB_PATH', 'raspy_monitor.db')
+DB_PATH = os.environ.get('DB_PATH', 'monitor.db')
 
 # Delete if --reset
 if RESET:
@@ -98,4 +98,4 @@ if [ $PYTHON_EXIT -ne 0 ]; then
 fi
 
 echo "[success] User initialization complete"
-echo "Restart the service with: sudo systemctl restart pi-monitor-<username>"
+echo "Restart the service with: sudo systemctl restart pi-monitor"

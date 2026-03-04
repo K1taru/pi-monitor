@@ -60,7 +60,7 @@ FRONTEND_DIR="$PROJECT_DIR/frontend"
 FAN_CONTROL_BIN="${FAN_CONTROL_BIN:-/usr/local/bin/pi-monitor-fan-control}"
 GOV_CONTROL_BIN="${GOV_CONTROL_BIN:-/usr/local/bin/pi-monitor-gov-control}"
 PORT="${PORT:-8001}"
-SERVICE_NAME="pi-monitor-${USERNAME}"
+SERVICE_NAME="pi-monitor"
 
 if [ ! -d "$PROJECT_DIR" ]; then
     echo "ERROR: $PROJECT_DIR not found" >&2
@@ -76,7 +76,7 @@ echo "Project dir : $PROJECT_DIR"
 echo "Fan control : $FAN_CONTROL_BIN"
 echo "Gov control : $GOV_CONTROL_BIN"
 echo "Port        : $PORT"
-echo "Service     : $SERVICE_NAME"
+echo "Service     : $SERVICE_NAME  (systemd unit: ${SERVICE_NAME}.service)"
 echo ""
 
 cd "$PROJECT_DIR"
@@ -135,13 +135,21 @@ visudo -c -f "$SUDOERS_FILE" > /dev/null 2>&1 || {
 echo "[ok] $SUDOERS_FILE"
 
 # ========================================
-# 5. Systemd service
+# 5. Systemd service (write + enable only)
 # ========================================
 echo "[5/6] Installing systemd service..."
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
+
+# Stop the service first if it is already running, so we can safely
+# initialise the database in step 6 without a concurrent writer.
+if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
+    echo "      Stopping existing $SERVICE_NAME service ..."
+    systemctl stop "$SERVICE_NAME"
+fi
+
 cat > "$SERVICE_FILE" << EOF
 [Unit]
-Description=Pi Monitor Backend ($USERNAME)
+Description=Pi Monitor Backend
 After=network.target
 
 [Service]
@@ -158,12 +166,11 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable  "$SERVICE_NAME"
-systemctl restart "$SERVICE_NAME"
-echo "[ok] $SERVICE_FILE (enabled + started)"
+systemctl enable "$SERVICE_NAME"
+echo "[ok] $SERVICE_FILE (written + enabled)"
 
 # ========================================
-# 6. Database init
+# 6. Database init  (runs BEFORE the service starts)
 # ========================================
 echo "[6/6] Initializing database..."
 cd "$BACKEND_DIR"
@@ -173,8 +180,14 @@ from dotenv import load_dotenv
 load_dotenv()
 from database import init_db
 init_db()
+print("[ok] init_db() completed")
 PY
 echo "[ok] Database ready"
+
+# Start the service now that the DB is fully initialised
+echo "      Starting $SERVICE_NAME ..."
+systemctl restart "$SERVICE_NAME"
+echo "[ok] $SERVICE_NAME started"
 
 # ========================================
 # Done
@@ -187,6 +200,10 @@ systemctl status "$SERVICE_NAME" --no-pager -l
 echo ""
 echo "Useful commands:"
 echo "  sudo systemctl restart $SERVICE_NAME"
-echo "  sudo journalctl -u $SERVICE_NAME -f"
+echo "  sudo journalctl -u $SERVICE_NAME -f            # app-level logs (journalctl)"
+echo "  tail -f $BACKEND_DIR/logs/pi-monitor-ops.log  # verbose ops log"
 echo "  http://localhost:${PORT}  (or your tunnel URL)"
+echo ""
+echo "If users were not created, re-run user init manually:"
+echo "  cd $PROJECT_DIR && setup/init-users.sh"
 echo ""

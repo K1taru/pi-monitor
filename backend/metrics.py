@@ -7,6 +7,7 @@ import psutil
 from datetime import datetime, timedelta
 
 from database import db_connection
+from logger import app_log, ops_log
 
 
 # ---------------------------------------------------------------------------
@@ -117,13 +118,21 @@ def store_metrics():
                 m['disk']['percent'],
             ),
         )
+    ops_log.debug(
+        'Stored metrics — cpu=%.1f%% temp=%.1f°C freq=%.0fMHz ram=%.1f%% disk=%.1f%%',
+        m['cpu']['percent'], m['cpu']['temperature'], m['cpu']['frequency'],
+        m['memory']['percent'], m['disk']['percent'],
+    )
 
 
 def cleanup_old_metrics():
     """Delete metrics older than 24 hours."""
     cutoff = (datetime.now() - timedelta(hours=24)).isoformat()
     with db_connection() as conn:
-        conn.execute('DELETE FROM metrics_history WHERE timestamp < ?', (cutoff,))
+        result = conn.execute('DELETE FROM metrics_history WHERE timestamp < ?', (cutoff,))
+        deleted = result.rowcount
+    if deleted:
+        ops_log.info('Cleaned up %d old metric(s) (before %s)', deleted, cutoff)
 
 
 # ---------------------------------------------------------------------------
@@ -131,16 +140,20 @@ def cleanup_old_metrics():
 # ---------------------------------------------------------------------------
 
 def _collector_loop():
+    ops_log.info('Metrics collector thread started (interval=60s)')
     while True:
         try:
             store_metrics()
             cleanup_old_metrics()
         except Exception as e:
-            print(f"[metrics] Error in collector: {e}")
+            app_log.error('Metrics collector error: %s', e)
+            ops_log.error('Metrics collector error: %s', e)
         time.sleep(60)
 
 
 def start_collector():
     """Start the background metrics collection thread (call once at startup)."""
+    app_log.info('Starting background metrics collector')
+    ops_log.info('Launching metrics-collector daemon thread')
     t = threading.Thread(target=_collector_loop, daemon=True, name='metrics-collector')
     t.start()

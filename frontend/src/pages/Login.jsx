@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { Terminal, Lock, AlertCircle } from 'lucide-react';
 import '../styles/Login.css';
@@ -8,6 +8,7 @@ function Login({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const passwordRef = useRef(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,6 +27,8 @@ function Login({ onLogin }) {
       });
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed. Please try again.');
+      setPassword('');
+      passwordRef.current?.focus();
     } finally {
       setLoading(false);
     }
@@ -79,6 +82,7 @@ function Login({ onLogin }) {
               <input
                 id="password"
                 type="password"
+                ref={passwordRef}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"

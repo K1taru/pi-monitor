@@ -1,7 +1,7 @@
 # pi-monitor.service — Reference template
 #
 # This file shows the structure of the service unit that setup.sh generates.
-# setup.sh writes the actual file to /etc/systemd/system/pi-monitor-<username>.service
+# setup.sh writes the actual file to /etc/systemd/system/pi-monitor.service
 # with all variables filled in from backend/.env and the username argument.
 #
 # You do NOT need to edit or install this file manually.

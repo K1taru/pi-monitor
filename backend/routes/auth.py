@@ -19,7 +19,10 @@ def login():
     password = data.get('password')
 
     if not username or not password:
+        ops_log.warning('Login attempt with missing credentials from %s', request.remote_addr)
         return jsonify({'error': 'Username and password required'}), 400
+
+    ops_log.info('Login attempt for user "%s" from %s', username, request.remote_addr)
 
     with db_connection() as conn:
         row = conn.execute(
@@ -32,12 +35,14 @@ def login():
             identity=str(row['id']),
             additional_claims={'username': row['username'], 'is_admin': bool(row['is_admin'])},
         )
+        ops_log.info('Login SUCCESS — user "%s" (id=%s, admin=%s)', row['username'], row['id'], bool(row['is_admin']))
         return jsonify({
             'access_token': token,
             'username':     row['username'],
             'is_admin':     bool(row['is_admin']),
         }), 200
 
+    ops_log.warning('Login FAILED — invalid credentials for user "%s" from %s', username, request.remote_addr)
     return jsonify({'error': 'Invalid credentials'}), 401
 
 
@@ -61,9 +66,13 @@ def change_password():
     new_password = data.get('new_password')
 
     if not old_password or not new_password:
+        ops_log.warning('Password change attempt with missing fields (user_id=%s)', user_id)
         return jsonify({'error': 'Old and new password required'}), 400
     if len(new_password) < 8:
+        ops_log.warning('Password change rejected — too short (user_id=%s)', user_id)
         return jsonify({'error': 'New password must be at least 8 characters'}), 400
+
+    ops_log.info('Password change requested by user_id=%s', user_id)
 
     with db_connection() as conn:
         row = conn.execute(
@@ -75,6 +84,8 @@ def change_password():
                 'UPDATE users SET password_hash = ? WHERE id = ?',
                 (generate_password_hash(new_password), user_id),
             )
+            ops_log.info('Password changed successfully for user_id=%s', user_id)
             return jsonify({'message': 'Password changed successfully'}), 200
 
+    ops_log.warning('Password change FAILED — invalid old password (user_id=%s)', user_id)
     return jsonify({'error': 'Invalid old password'}), 401
