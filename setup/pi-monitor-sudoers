@@ -1,7 +1,7 @@
 # pi-monitor-sudoers — Reference template
 #
 # Shows the sudoers rules that setup.sh generates.
-# setup.sh writes the actual file to /etc/sudoers.d/pi-monitor-<username>
+# setup.sh writes the actual file to /etc/sudoers.d/pi-monitor
 # with paths taken from FAN_CONTROL_BIN / GOV_CONTROL_BIN in backend/.env.
 #
 # You do NOT need to install this file manually.

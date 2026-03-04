@@ -9,6 +9,7 @@ import time
 from flask import Blueprint, jsonify, request
 
 from decorators import admin_required
+from logger import app_log, ops_log
 
 system_bp = Blueprint('system', __name__, url_prefix='/api/system')
 
@@ -71,13 +72,16 @@ def fan_boost_on_start(duration: int = 180):
                            check=True, capture_output=True, text=True)
             subprocess.run(['sudo', _FAN_CONTROL_BIN, 'write-mode', '1'],
                            check=True, capture_output=True, text=True)
-            print(f'[fan] Boost started — max speed for {duration}s')
+            app_log.info('Fan boost started — max speed for %ds', duration)
+            ops_log.info('Fan boost: PWM=255, mode=1 (manual), duration=%ds', duration)
             time.sleep(duration)
             subprocess.run(['sudo', _FAN_CONTROL_BIN, 'write-mode', '2'],
                            check=True, capture_output=True, text=True)
-            print('[fan] Boost finished — returned to auto')
+            app_log.info('Fan boost finished — returned to auto')
+            ops_log.info('Fan boost complete: mode=2 (auto)')
         except Exception as e:
-            print(f'[fan] Boost error: {e}')
+            app_log.error('Fan boost error: %s', e)
+            ops_log.error('Fan boost error: %s', e)
 
     t = threading.Thread(target=_boost, daemon=True, name='fan-boost')
     t.start()
@@ -91,14 +95,18 @@ def cpu_governor():
                 current = f.read().strip()
             with open(_AVAILABLE_PATH) as f:
                 available = f.read().strip().split()
+            ops_log.debug('Governor GET — current=%s, available=%s', current, available)
             return jsonify({'current': current, 'available': available}), 200
         except (OSError, IOError) as e:
+            ops_log.error('Governor GET failed: %s', e)
             return jsonify({'error': str(e)}), 500
 
     # POST
     governor = (request.get_json() or {}).get('governor')
     if not governor:
         return jsonify({'error': 'Governor required'}), 400
+
+    ops_log.info('Governor change requested: %s', governor)
 
     try:
         with open(_AVAILABLE_PATH) as f:
@@ -110,9 +118,11 @@ def cpu_governor():
             ['sudo', _GOV_CONTROL_BIN, governor],
             capture_output=True, text=True, check=True,
         )
+        ops_log.info('CPU governor changed to "%s"', governor)
         return jsonify({'message': f'Governor set to {governor}'}), 200
     except (OSError, subprocess.CalledProcessError) as e:
         err = getattr(e, 'stderr', None) or str(e)
+        ops_log.error('Failed to set governor to "%s": %s', governor, err)
         return jsonify({'error': err}), 500
 
 
@@ -168,8 +178,10 @@ def fan_control():
                 ['sudo', _FAN_CONTROL_BIN, 'write-mode', '1'],
                 check=True, capture_output=True, text=True,
             )
+        ops_log.info('Fan settings updated via API')
         return jsonify({'message': 'Fan settings updated'}), 200
     except subprocess.CalledProcessError as e:
+        ops_log.error('Fan control error: %s', e.stderr or str(e))
         return jsonify({'error': e.stderr or str(e)}), 500
 
 
@@ -177,7 +189,10 @@ def fan_control():
 @admin_required
 def reboot_system():
     try:
+        app_log.warning('System reboot requested via API')
+        ops_log.warning('REBOOT initiated from API')
         subprocess.Popen(['sudo', 'reboot'])
         return jsonify({'message': 'System rebooting...'}), 200
     except (OSError, subprocess.SubprocessError) as e:
+        ops_log.error('Reboot failed: %s', e)
         return jsonify({'error': str(e)}), 500
