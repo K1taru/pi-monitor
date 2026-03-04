@@ -81,8 +81,10 @@ echo ""
 
 cd "$PROJECT_DIR"
 
-# ========================================
-# 1. Frontend build
+# Ensure all setup scripts are executable (handles Windows CRLF line endings)
+sed -i 's/\r$//' setup/setup.sh setup/init-users.sh
+chmod +x setup/setup.sh setup/init-users.sh
+
 # ========================================
 echo "[1/6] Building frontend..."
 su - "$USERNAME" -c "
@@ -205,5 +207,6 @@ echo "  tail -f $BACKEND_DIR/logs/pi-monitor-ops.log  # verbose ops log"
 echo "  http://localhost:${PORT}  (or your tunnel URL)"
 echo ""
 echo "If users were not created, re-run user init manually:"
+echo "  sed -i 's/\\r$//' $PROJECT_DIR/setup/init-users.sh && chmod +x $PROJECT_DIR/setup/init-users.sh"
 echo "  cd $PROJECT_DIR && setup/init-users.sh"
 echo ""

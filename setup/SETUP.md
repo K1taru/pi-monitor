@@ -106,11 +106,13 @@ ssh k1taru@raspy.local
 
 **Reinitialize users from `.env`** (safe, won't delete existing users):
 ```bash
+sed -i 's/\r$//' ~/pi-monitor/setup/init-users.sh && chmod +x ~/pi-monitor/setup/init-users.sh
 cd ~/pi-monitor && setup/init-users.sh
 ```
 
 **Wipe and recreate all users from `.env`**:
 ```bash
+sed -i 's/\r$//' ~/pi-monitor/setup/init-users.sh && chmod +x ~/pi-monitor/setup/init-users.sh
 cd ~/pi-monitor && setup/init-users.sh --reset
 ```
 
@@ -189,7 +191,7 @@ sudo systemctl enable --now cloudflared
 | Service won't start | `sudo journalctl -u pi-monitor -n 50 --no-pager` |
 | Port already in use | `sudo lsof -i :8001`; change `PORT` in `.env` and rerun setup |
 | Login fails | Check DB: `sqlite3 backend/monitor.db 'SELECT username, is_admin FROM users;'` |
-| Users not created | Re-run: `cd ~/pi-monitor && setup/init-users.sh`; check `.env` format: `username:password:1` |
+| Users not created | Re-run: `sed -i 's/\r$//' ~/pi-monitor/setup/init-users.sh && chmod +x ~/pi-monitor/setup/init-users.sh && cd ~/pi-monitor && setup/init-users.sh` |
 | Governor/fan control fails | Check: `sudo -l \| grep pi-monitor`; verify `/etc/sudoers.d/pi-monitor` exists |
 | Fan not detected | Check: `ls /sys/class/hwmon/hwmon*/pwm1` — Pi 5 fan must be in the fan header |
 | Frontend shows 404 | Rebuild: `cd ~/pi-monitor/frontend && npm install && npm run build` |
@@ -214,6 +216,7 @@ cd frontend && npm install && npm run build && cd ..
 sudo systemctl restart pi-monitor
 
 # To reset database users from .env (non-destructive)
+sed -i 's/\r$//' setup/init-users.sh && chmod +x setup/init-users.sh
 setup/init-users.sh
 
 # To wipe and recreate the user database from .env
