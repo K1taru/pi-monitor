@@ -80,7 +80,7 @@ def _create_default_users(conn):
 
         username, password, is_admin_str = parts
         username = username.strip()
-        password = password.strip()
+        password = password.strip().strip("'").strip('"')  # strip accidental surrounding quotes
 
         try:
             is_admin = int(is_admin_str.strip())
