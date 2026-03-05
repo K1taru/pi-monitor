@@ -36,7 +36,7 @@ At minimum, set these in `backend/.env`:
 SECRET_KEY=<run: python3 -c "import secrets; print(secrets.token_hex(32))">
 JWT_SECRET_KEY=<run: python3 -c "import secrets; print(secrets.token_hex(32))">
 PORT=8001
-DEFAULT_USERS=yourusername:yourpassword:1
+DEFAULT_USERS="yourusername:yourpassword:1"
 ```
 
 ### Step 2 — Run setup

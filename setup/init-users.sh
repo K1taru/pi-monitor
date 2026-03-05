@@ -14,7 +14,7 @@
 #   - Working .env file with DEFAULT_USERS variable
 #
 # Example .env:
-#   DEFAULT_USERS=k1taru:mypassword:1;guest:guestpass:0
+#   DEFAULT_USERS="k1taru:mypassword:1;guest:guestpass:0"
 
 set -e
 
