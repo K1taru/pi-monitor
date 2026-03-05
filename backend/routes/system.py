@@ -169,10 +169,12 @@ def fan_control():
             speed = data.get('speed')
             if speed is not None:
                 pwm = max(0, min(255, round(int(speed) / 100 * 255)))
-                subprocess.run(
-                    ['sudo', _FAN_CONTROL_BIN, 'write-pwm', str(pwm)],
-                    check=True, capture_output=True, text=True,
-                )
+                for _ in range(5):
+                    subprocess.run(
+                        ['sudo', _FAN_CONTROL_BIN, 'write-pwm', str(pwm)],
+                        check=True, capture_output=True, text=True,
+                    )
+                    time.sleep(0.2)
             # Ensure manual mode is set
             subprocess.run(
                 ['sudo', _FAN_CONTROL_BIN, 'write-mode', '1'],

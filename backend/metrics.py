@@ -102,22 +102,21 @@ def get_processes():
 # Persistence
 # ---------------------------------------------------------------------------
 
-def store_metrics():
+def store_metrics(conn):
     """Persist the current metrics snapshot to the database."""
     m = get_system_metrics()
-    with db_connection() as conn:
-        conn.execute(
-            '''INSERT INTO metrics_history
-               (cpu_temp, cpu_freq, cpu_percent, ram_percent, disk_percent)
-               VALUES (?, ?, ?, ?, ?)''',
-            (
-                m['cpu']['temperature'],
-                m['cpu']['frequency'],
-                m['cpu']['percent'],
-                m['memory']['percent'],
-                m['disk']['percent'],
-            ),
-        )
+    conn.execute(
+        '''INSERT INTO metrics_history
+           (cpu_temp, cpu_freq, cpu_percent, ram_percent, disk_percent)
+           VALUES (?, ?, ?, ?, ?)''',
+        (
+            m['cpu']['temperature'],
+            m['cpu']['frequency'],
+            m['cpu']['percent'],
+            m['memory']['percent'],
+            m['disk']['percent'],
+        ),
+    )
     ops_log.debug(
         'Stored metrics — cpu=%.1f%% temp=%.1f°C freq=%.0fMHz ram=%.1f%% disk=%.1f%%',
         m['cpu']['percent'], m['cpu']['temperature'], m['cpu']['frequency'],
@@ -125,12 +124,11 @@ def store_metrics():
     )
 
 
-def cleanup_old_metrics():
+def cleanup_old_metrics(conn):
     """Delete metrics older than 24 hours."""
     cutoff = (datetime.now() - timedelta(hours=24)).isoformat()
-    with db_connection() as conn:
-        result = conn.execute('DELETE FROM metrics_history WHERE timestamp < ?', (cutoff,))
-        deleted = result.rowcount
+    result = conn.execute('DELETE FROM metrics_history WHERE timestamp < ?', (cutoff,))
+    deleted = result.rowcount
     if deleted:
         ops_log.info('Cleaned up %d old metric(s) (before %s)', deleted, cutoff)
 
@@ -143,8 +141,9 @@ def _collector_loop():
     ops_log.info('Metrics collector thread started (interval=60s)')
     while True:
         try:
-            store_metrics()
-            cleanup_old_metrics()
+            with db_connection() as conn:
+                store_metrics(conn)
+                cleanup_old_metrics(conn)
         except Exception as e:
             app_log.error('Metrics collector error: %s', e)
             ops_log.error('Metrics collector error: %s', e)
