@@ -3,7 +3,9 @@
 Raspberry Pi System Monitor — application entry point.
 """
 from dotenv import load_dotenv
-load_dotenv()  # Must run before any os.environ access
+load_dotenv(override=True)  # Must run before any os.environ access; override=True
+                             # ensures python-dotenv values win over systemd EnvironmentFile
+                             # (systemd mangles special chars like ! in passwords)
 
 import os
 from flask import Flask
