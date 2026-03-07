@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Settings, Cpu, Fan, Power, AlertCircle, Check, Wind } from 'lucide-react';
+import { Settings, Cpu, Fan, Power, AlertCircle, Check, Wind, Zap } from 'lucide-react';
+import FanCurve from './FanCurve';
 import '../styles/SystemControls.css';
 
 function SystemControls() {
@@ -8,7 +9,7 @@ function SystemControls() {
     current: '',
     available: []
   });
-  const [fan, setFan] = useState({ available: false, speed: 50, rpm: 0, auto: true, mode: 2 });
+  const [fan, setFan] = useState({ available: false, speed: 50, rpm: 0, mode: 'auto' });
   const [fanSpeed, setFanSpeed] = useState(50);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(null);
@@ -48,20 +49,22 @@ function SystemControls() {
     }
   };
 
-  const handleFanAutoToggle = async () => {
-    const newAuto = !fan.auto;
+  const handleFanMode = async (mode) => {
     try {
-      await axios.post('/system/fan', { auto: newAuto, speed: newAuto ? undefined : fanSpeed });
-      showMessage('success', newAuto ? 'Fan set to automatic control' : 'Fan set to manual control');
+      const payload = { mode };
+      if (mode === 'manual') payload.speed = fanSpeed;
+      await axios.post('/system/fan', payload);
+      const labels = { auto: 'Auto (curve)', manual: 'Manual', turbo: 'Turbo' };
+      showMessage('success', `Fan mode: ${labels[mode]}`);
       await fetchFan();
     } catch (error) {
-      showMessage('error', error.response?.data?.error || 'Failed to update fan mode');
+      showMessage('error', error.response?.data?.error || 'Failed to change fan mode');
     }
   };
 
   const handleFanSpeedApply = async () => {
     try {
-      await axios.post('/system/fan', { auto: false, speed: fanSpeed });
+      await axios.post('/system/fan', { mode: 'manual', speed: fanSpeed });
       showMessage('success', `Fan speed set to ${fanSpeed}%`);
       await fetchFan();
     } catch (error) {
@@ -189,47 +192,80 @@ function SystemControls() {
               </div>
               <div className="fan-stat">
                 <span className="label">Mode</span>
-                <span className={`value ${fan.auto ? 'text-accent' : ''}`}>
-                  {fan.auto ? 'AUTO' : 'MANUAL'}
+                <span className={`value ${fan.mode === 'turbo' ? 'text-danger' : fan.mode === 'auto' ? 'text-accent' : ''}`}>
+                  {fan.mode?.toUpperCase()}
                 </span>
               </div>
             </div>
 
-            <div className="fan-controls">
+            {/* Mode buttons */}
+            <div className="fan-mode-buttons">
               <button
-                className={`btn ${fan.auto ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={handleFanAutoToggle}
+                className={`mode-btn ${fan.mode === 'auto' ? 'active auto' : ''}`}
+                onClick={() => handleFanMode('auto')}
               >
-                {fan.auto ? 'Auto (On)' : 'Auto (Off)'}
+                <Fan size={16} />
+                Auto
               </button>
+              <button
+                className={`mode-btn ${fan.mode === 'manual' ? 'active manual' : ''}`}
+                onClick={() => handleFanMode('manual')}
+              >
+                <Settings size={16} />
+                Manual
+              </button>
+              <button
+                className={`mode-btn turbo-btn ${fan.mode === 'turbo' ? 'active turbo' : ''}`}
+                onClick={() => handleFanMode('turbo')}
+              >
+                <Zap size={16} />
+                Turbo
+              </button>
+            </div>
 
-              <div className={`fan-slider-group ${fan.auto ? 'disabled' : ''}`}>
-                <div className="slider-labels">
-                  <span>0%</span>
-                  <span className="slider-current">{fanSpeed}%</span>
-                  <span>100%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={fanSpeed}
-                  disabled={fan.auto}
-                  onChange={(e) => setFanSpeed(Number(e.target.value))}
-                  className="fan-slider"
-                />
-                <button
-                  className="btn btn-secondary"
-                  onClick={handleFanSpeedApply}
-                  disabled={fan.auto}
-                >
-                  Apply Speed
-                </button>
+            {/* Manual speed slider — only when in manual mode */}
+            <div className={`fan-slider-group ${fan.mode !== 'manual' ? 'disabled' : ''}`}>
+              <div className="slider-labels">
+                <span>0%</span>
+                <span className="slider-current">{fanSpeed}%</span>
+                <span>100%</span>
               </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={fanSpeed}
+                disabled={fan.mode !== 'manual'}
+                onChange={(e) => setFanSpeed(Number(e.target.value))}
+                className="fan-slider"
+              />
+              <button
+                className="btn btn-secondary"
+                onClick={handleFanSpeedApply}
+                disabled={fan.mode !== 'manual'}
+              >
+                Apply Speed
+              </button>
             </div>
           </>
         )}
       </div>
+
+      {/* Fan Speed Curve */}
+      {fan.available && (
+        <div className="card control-section">
+          <div className="section-icon">
+            <Settings size={32} />
+          </div>
+
+          <h2>Fan Speed Curve</h2>
+          <p className="section-description">
+            Set temperature → fan speed mapping. Active when fan is in Auto mode.
+          </p>
+
+          <FanCurve />
+        </div>
+      )}
 
       {/* System Power */}
       <div className="card control-section danger-zone">
