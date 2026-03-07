@@ -1,5 +1,5 @@
 """
-System control routes — /api/system/*  (admin only)
+Fan control routes — /system/fan  (admin only)
 """
 import glob
 import os
@@ -8,15 +8,12 @@ import threading
 import time
 from flask import Blueprint, jsonify, request
 
-from decorators import admin_required
-from logger import app_log, ops_log
+from utils.decorators import admin_required
+from utils.logger import app_log, ops_log
 
-system_bp = Blueprint('system', __name__, url_prefix='/api/system')
+fan_bp = Blueprint('system_fan', __name__)
 
-_GOVERNOR_PATH   = '/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor'
-_AVAILABLE_PATH  = '/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors'
 _FAN_CONTROL_BIN = os.environ.get('FAN_CONTROL_BIN', '/usr/local/bin/pi-monitor-fan-control')
-_GOV_CONTROL_BIN = os.environ.get('GOV_CONTROL_BIN', '/usr/local/bin/pi-monitor-gov-control')
 _HWMON_CACHE     = '/run/pi-monitor-fan-hwmon'
 
 # Module-level cache — populated once, revalidated only when the path disappears.
@@ -26,7 +23,7 @@ _fan_hwmon_cached: str | None = None
 def _find_fan_hwmon() -> str | None:
     """Return the hwmon sysfs directory that exposes PWM fan control.
 
-    The result is cached in memory and in /run/raspy-fan-hwmon so that both
+    The result is cached in memory and in /run/pi-monitor-fan-hwmon so that both
     this process and fan-control.sh agree on the path without re-scanning on
     every call (hwmon index shifts on reboot but stays stable at runtime).
     """
@@ -61,15 +58,17 @@ def _find_fan_hwmon() -> str | None:
     return None
 
 
-def fan_boost_on_start(duration: int = 180):
+def fan_boost_on_start(duration: int = 60):
     """Run fan at 100% for `duration` seconds on startup, then return to auto.
 
     Runs in a background daemon thread — call once from app.py.
     """
     def _boost():
         try:
-            subprocess.run(['sudo', _FAN_CONTROL_BIN, 'write-pwm', '255'],
-                           check=True, capture_output=True, text=True)
+            for _ in range(8):
+                subprocess.run(['sudo', _FAN_CONTROL_BIN, 'write-pwm', '255'],
+                               check=True, capture_output=True, text=True)
+                time.sleep(0.15)
             subprocess.run(['sudo', _FAN_CONTROL_BIN, 'write-mode', '1'],
                            check=True, capture_output=True, text=True)
             app_log.info('Fan boost started — max speed for %ds', duration)
@@ -86,47 +85,8 @@ def fan_boost_on_start(duration: int = 180):
     t = threading.Thread(target=_boost, daemon=True, name='fan-boost')
     t.start()
 
-@system_bp.route('/governor', methods=['GET', 'POST'])
-@admin_required
-def cpu_governor():
-    if request.method == 'GET':
-        try:
-            with open(_GOVERNOR_PATH) as f:
-                current = f.read().strip()
-            with open(_AVAILABLE_PATH) as f:
-                available = f.read().strip().split()
-            ops_log.debug('Governor GET — current=%s, available=%s', current, available)
-            return jsonify({'current': current, 'available': available}), 200
-        except (OSError, IOError) as e:
-            ops_log.error('Governor GET failed: %s', e)
-            return jsonify({'error': str(e)}), 500
 
-    # POST
-    governor = (request.get_json() or {}).get('governor')
-    if not governor:
-        return jsonify({'error': 'Governor required'}), 400
-
-    ops_log.info('Governor change requested: %s', governor)
-
-    try:
-        with open(_AVAILABLE_PATH) as f:
-            available = f.read().strip().split()
-        if governor not in available:
-            return jsonify({'error': f'Invalid governor: {governor}'}), 400
-
-        subprocess.run(
-            ['sudo', _GOV_CONTROL_BIN, governor],
-            capture_output=True, text=True, check=True,
-        )
-        ops_log.info('CPU governor changed to "%s"', governor)
-        return jsonify({'message': f'Governor set to {governor}'}), 200
-    except (OSError, subprocess.CalledProcessError) as e:
-        err = getattr(e, 'stderr', None) or str(e)
-        ops_log.error('Failed to set governor to "%s": %s', governor, err)
-        return jsonify({'error': err}), 500
-
-
-@system_bp.route('/fan', methods=['GET', 'POST'])
+@fan_bp.route('/fan', methods=['GET', 'POST'])
 @admin_required
 def fan_control():
     hwmon = _find_fan_hwmon()
@@ -169,12 +129,12 @@ def fan_control():
             speed = data.get('speed')
             if speed is not None:
                 pwm = max(0, min(255, round(int(speed) / 100 * 255)))
-                for _ in range(5):
+                for _ in range(8):
                     subprocess.run(
                         ['sudo', _FAN_CONTROL_BIN, 'write-pwm', str(pwm)],
                         check=True, capture_output=True, text=True,
                     )
-                    time.sleep(0.2)
+                    time.sleep(0.15)
             # Ensure manual mode is set
             subprocess.run(
                 ['sudo', _FAN_CONTROL_BIN, 'write-mode', '1'],
@@ -185,16 +145,3 @@ def fan_control():
     except subprocess.CalledProcessError as e:
         ops_log.error('Fan control error: %s', e.stderr or str(e))
         return jsonify({'error': e.stderr or str(e)}), 500
-
-
-@system_bp.route('/reboot', methods=['POST'])
-@admin_required
-def reboot_system():
-    try:
-        app_log.warning('System reboot requested via API')
-        ops_log.warning('REBOOT initiated from API')
-        subprocess.Popen(['sudo', 'reboot'])
-        return jsonify({'message': 'System rebooting...'}), 200
-    except (OSError, subprocess.SubprocessError) as e:
-        ops_log.error('Reboot failed: %s', e)
-        return jsonify({'error': str(e)}), 500

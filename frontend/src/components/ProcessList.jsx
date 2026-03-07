@@ -11,7 +11,7 @@ function ProcessList() {
 
   const fetchProcesses = useCallback(async () => {
     try {
-      const response = await axios.get('/api/processes');
+      const response = await axios.get('/processes');
       setProcesses(response.data);
       setLoading(false);
     } catch (error) {
@@ -30,8 +30,9 @@ function ProcessList() {
       proc.name.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => {
-      if (sortBy === 'cpu') return b.cpu - a.cpu;
-      if (sortBy === 'memory') return b.memory - a.memory;
+      if (sortBy === 'cpu')       return b.cpu - a.cpu;
+      if (sortBy === 'memory')    return b.memory - a.memory;
+      if (sortBy === 'memory_mb') return b.memory_mb - a.memory_mb;
       return 0;
     });
 
@@ -81,7 +82,13 @@ function ProcessList() {
           className={`sort-btn ${sortBy === 'memory' ? 'active' : ''}`}
           onClick={() => setSortBy('memory')}
         >
-          Sort by Memory
+          Sort by Memory %
+        </button>
+        <button
+          className={`sort-btn ${sortBy === 'memory_mb' ? 'active' : ''}`}
+          onClick={() => setSortBy('memory_mb')}
+        >
+          Sort by Used Memory
         </button>
       </div>
 
@@ -93,6 +100,7 @@ function ProcessList() {
               <th>Process Name</th>
               <th>CPU %</th>
               <th>Memory %</th>
+              <th>Used (MB)</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -118,6 +126,9 @@ function ProcessList() {
                     ></div>
                     <span>{proc.memory}%</span>
                   </div>
+                </td>
+                <td className="metric-cell">
+                  <span>{proc.memory_mb} MB</span>
                 </td>
                 <td className="status-cell">
                   <span className="status-badge running">Running</span>

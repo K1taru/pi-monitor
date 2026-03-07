@@ -1,5 +1,5 @@
 """
-Authentication routes — /api/auth/*
+Authentication routes — /auth/*
 """
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import (
@@ -8,9 +8,9 @@ from flask_jwt_extended import (
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from database import db_connection
-from logger import app_log, ops_log
+from utils.logger import app_log, ops_log
 
-auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
 @auth_bp.route('/login', methods=['POST'])

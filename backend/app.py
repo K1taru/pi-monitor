@@ -11,16 +11,15 @@ import os
 from flask import Flask
 from flask_cors import CORS
 
-import config
-from logger import app_log, ops_log
-from extensions import socketio, jwt
+import core.config as config
+from utils.logger import app_log, ops_log
+from core.extensions import jwt
 from database import init_db
-from metrics import start_collector
+from services.metrics import start_collector
 from routes.auth import auth_bp
 from routes.metrics import metrics_bp
 from routes.system import system_bp, fan_boost_on_start
-from routes.frontend import frontend_bp
-from sockets.terminal import register_handlers
+from routes.dist import frontend_bp
 
 
 def create_app() -> Flask:
@@ -35,14 +34,12 @@ def create_app() -> Flask:
 
     # CORS
     origins = os.environ.get('CORS_ORIGINS', 'http://localhost:5173').split(',')
-    CORS(app, resources={r"/api/*": {"origins": origins}})
+    CORS(app, resources={r"/*": {"origins": origins}})
     ops_log.info('CORS configured for origins: %s', origins)
 
     # Extensions
     jwt.init_app(app)
     ops_log.info('JWT extension initialised (token expiry: %s)', app.config.get('JWT_ACCESS_TOKEN_EXPIRES'))
-    socketio.init_app(app, cors_allowed_origins=origins, async_mode='threading')
-    ops_log.info('SocketIO initialised (async_mode=threading)')
 
     # Blueprints
     app.register_blueprint(auth_bp)
@@ -51,14 +48,10 @@ def create_app() -> Flask:
     app.register_blueprint(frontend_bp)
     ops_log.info('Registered blueprints: auth, metrics, system, frontend')
 
-    # WebSocket handlers
-    register_handlers()
-    ops_log.info('WebSocket terminal handlers registered')
-
     # Database & background collector
     init_db()
     start_collector()
-    fan_boost_on_start(duration=180)  # Max fan speed for first 3 minutes
+    fan_boost_on_start(duration=60)  # Max fan speed for first minute
 
     ops_log.info('=== APP STARTUP COMPLETE ===')
     return app
@@ -80,4 +73,4 @@ if __name__ == '__main__':
     else:
         app_log.warning('DEFAULT_USERS is not set. No users will be created unless the DB already has accounts.')
 
-    socketio.run(app, host='0.0.0.0', port=port, debug=debug, allow_unsafe_werkzeug=True)
+    app.run(host='0.0.0.0', port=port, debug=debug)

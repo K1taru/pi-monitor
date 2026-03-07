@@ -15,7 +15,7 @@ _FRONTEND_DIR = os.path.abspath(
 )
 
 
-@frontend_bp.route('/api/health', methods=['GET'])
+@frontend_bp.route('/health', methods=['GET'])
 def health_check():
     return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()}), 200
 

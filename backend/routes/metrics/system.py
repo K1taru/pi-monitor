@@ -1,27 +1,27 @@
 """
-Metrics & process routes — /api/metrics/*, /api/processes
+System metrics routes — /metrics/current, /metrics/history
 """
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 from datetime import datetime, timedelta
 
 from database import db_connection
-from metrics import get_system_metrics, get_processes
+from services.metrics import get_system_metrics
 
-metrics_bp = Blueprint('metrics', __name__, url_prefix='/api')
+system_bp = Blueprint('system_metrics', __name__)
 
 
-@metrics_bp.route('/metrics/current', methods=['GET'])
+@system_bp.route('/metrics/current', methods=['GET'])
 @jwt_required()
 def get_current_metrics():
     return jsonify(get_system_metrics()), 200
 
 
-@metrics_bp.route('/metrics/history', methods=['GET'])
+@system_bp.route('/metrics/history', methods=['GET'])
 @jwt_required()
 def get_metrics_history():
     hours  = min(request.args.get('hours', default=1, type=int), 24)
-    cutoff = (datetime.now() - timedelta(hours=hours)).isoformat()
+    cutoff = (datetime.utcnow() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
 
     with db_connection() as conn:
         rows = conn.execute(
@@ -44,9 +44,3 @@ def get_metrics_history():
         for r in rows
     ]
     return jsonify(history), 200
-
-
-@metrics_bp.route('/processes', methods=['GET'])
-@jwt_required()
-def get_process_list():
-    return jsonify(get_processes()), 200

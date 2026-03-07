@@ -6,9 +6,13 @@ import contextlib
 import os
 from werkzeug.security import generate_password_hash
 
-from logger import app_log, ops_log
+from utils.logger import app_log, ops_log
 
-DB_PATH = os.environ.get('DB_PATH', 'monitor.db')
+_DEFAULT_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'monitor.db')
+DB_PATH = os.environ.get('DB_PATH', _DEFAULT_DB)
+
+# Ensure the database directory exists (handles both default and custom DB_PATH)
+os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
 
 
 @contextlib.contextmanager

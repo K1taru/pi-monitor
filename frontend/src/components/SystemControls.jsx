@@ -19,7 +19,7 @@ function SystemControls() {
 
   const fetchGovernor = async () => {
     try {
-      const response = await axios.get('/api/system/governor');
+      const response = await axios.get('/system/governor');
       setGovernor(response.data);
     } catch (error) {
       console.error('Error fetching governor:', error);
@@ -30,7 +30,7 @@ function SystemControls() {
 
   const fetchFan = async () => {
     try {
-      const response = await axios.get('/api/system/fan');
+      const response = await axios.get('/system/fan');
       setFan(response.data);
       if (response.data.speed !== undefined) setFanSpeed(response.data.speed);
     } catch (error) {
@@ -40,7 +40,7 @@ function SystemControls() {
 
   const handleGovernorChange = async (newGovernor) => {
     try {
-      await axios.post('/api/system/governor', { governor: newGovernor });
+      await axios.post('/system/governor', { governor: newGovernor });
       showMessage('success', `CPU governor changed to ${newGovernor}`);
       await fetchGovernor();
     } catch (error) {
@@ -51,7 +51,7 @@ function SystemControls() {
   const handleFanAutoToggle = async () => {
     const newAuto = !fan.auto;
     try {
-      await axios.post('/api/system/fan', { auto: newAuto, speed: newAuto ? undefined : fanSpeed });
+      await axios.post('/system/fan', { auto: newAuto, speed: newAuto ? undefined : fanSpeed });
       showMessage('success', newAuto ? 'Fan set to automatic control' : 'Fan set to manual control');
       await fetchFan();
     } catch (error) {
@@ -61,7 +61,7 @@ function SystemControls() {
 
   const handleFanSpeedApply = async () => {
     try {
-      await axios.post('/api/system/fan', { auto: false, speed: fanSpeed });
+      await axios.post('/system/fan', { auto: false, speed: fanSpeed });
       showMessage('success', `Fan speed set to ${fanSpeed}%`);
       await fetchFan();
     } catch (error) {
@@ -75,7 +75,7 @@ function SystemControls() {
     }
 
     try {
-      await axios.post('/api/system/reboot');
+      await axios.post('/system/reboot');
       showMessage('success', 'System is rebooting...');
     } catch (error) {
       showMessage('error', error.response?.data?.error || 'Failed to reboot system');

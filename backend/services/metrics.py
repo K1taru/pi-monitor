@@ -7,7 +7,7 @@ import psutil
 from datetime import datetime, timedelta
 
 from database import db_connection
-from logger import app_log, ops_log
+from utils.logger import app_log, ops_log
 
 
 # ---------------------------------------------------------------------------
@@ -81,21 +81,37 @@ def get_system_metrics():
 
 
 def get_processes():
-    """Return the top 20 processes sorted by CPU usage."""
+    """Return the top 50 processes covering both high-CPU and high-memory usage.
+
+    Collects all processes, then returns the union of the top 25 by CPU and the
+    top 25 by memory so that frontend sorting by either metric is meaningful.
+    """
     processes = []
-    for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent']):
+    for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent', 'memory_info']):
         try:
+            mem_info = proc.info['memory_info']
             processes.append({
-                'pid':    proc.info['pid'],
-                'name':   proc.info['name'],
-                'cpu':    round(proc.info['cpu_percent'],    2),
-                'memory': round(proc.info['memory_percent'], 2),
+                'pid':       proc.info['pid'],
+                'name':      proc.info['name'],
+                'cpu':       round(proc.info['cpu_percent'],    2),
+                'memory':    round(proc.info['memory_percent'], 2),
+                'memory_mb': round((mem_info.rss if mem_info else 0) / 1024 ** 2, 1),
             })
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
 
-    processes.sort(key=lambda x: x['cpu'], reverse=True)
-    return processes[:20]
+    top_cpu    = sorted(processes, key=lambda x: x['cpu'],    reverse=True)[:25]
+    top_memory = sorted(processes, key=lambda x: x['memory'], reverse=True)[:25]
+
+    seen = set()
+    combined = []
+    for p in top_cpu + top_memory:
+        if p['pid'] not in seen:
+            seen.add(p['pid'])
+            combined.append(p)
+
+    combined.sort(key=lambda x: x['cpu'], reverse=True)
+    return combined
 
 
 # ---------------------------------------------------------------------------
@@ -126,7 +142,7 @@ def store_metrics(conn):
 
 def cleanup_old_metrics(conn):
     """Delete metrics older than 24 hours."""
-    cutoff = (datetime.now() - timedelta(hours=24)).isoformat()
+    cutoff = (datetime.utcnow() - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
     result = conn.execute('DELETE FROM metrics_history WHERE timestamp < ?', (cutoff,))
     deleted = result.rowcount
     if deleted:

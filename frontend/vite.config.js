@@ -6,13 +6,25 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      '/api': {
+      '/auth': {
         target: 'http://localhost:8001',
         changeOrigin: true,
       },
-      '/socket.io': {
+      '/metrics': {
         target: 'http://localhost:8001',
-        ws: true,
+        changeOrigin: true,
+      },
+      '/processes': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+      },
+      '/system': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+      },
+      '/health': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
       },
     },
   },

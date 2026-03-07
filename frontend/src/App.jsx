@@ -32,7 +32,7 @@ function App() {
     const token = localStorage.getItem('token');
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      axios.get('/api/auth/verify')
+      axios.get('/auth/verify')
         .then(response => {
           setUser(response.data.user);
         })

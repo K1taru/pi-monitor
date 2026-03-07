@@ -9,7 +9,6 @@ import {
   Network,
   LogOut,
   Settings,
-  Terminal as TerminalIcon,
   Clock,
   Activity,
   ChevronDown,
@@ -17,7 +16,6 @@ import {
 } from 'lucide-react';
 import SystemChart from '../components/SystemChart';
 import ProcessList from '../components/ProcessList';
-import Terminal from '../components/Terminal';
 import SystemControls from '../components/SystemControls';
 import '../styles/Dashboard.css';
 
@@ -35,7 +33,7 @@ function Dashboard({ user, onLogout }) {
   // Fetch current metrics
   const fetchMetrics = useCallback(async () => {
     try {
-      const response = await axios.get('/api/metrics/current');
+      const response = await axios.get('/metrics/current');
       setMetrics(response.data);
     } catch (error) {
       console.error('Error fetching metrics:', error);
@@ -45,7 +43,7 @@ function Dashboard({ user, onLogout }) {
   // Fetch historical data
   const fetchHistory = useCallback(async (hours = 1) => {
     try {
-      const response = await axios.get(`/api/metrics/history?hours=${hours}`);
+      const response = await axios.get(`/metrics/history?hours=${hours}`);
       setHistory(response.data);
     } catch (error) {
       console.error('Error fetching history:', error);
@@ -164,13 +162,6 @@ function Dashboard({ user, onLogout }) {
         </button>
         {user.is_admin && (
           <>
-            <button
-              className={`nav-item ${activeTab === 'terminal' ? 'active' : ''}`}
-              onClick={() => setActiveTab('terminal')}
-            >
-              <TerminalIcon size={18} />
-              Terminal
-            </button>
             <button
               className={`nav-item ${activeTab === 'control' ? 'active' : ''}`}
               onClick={() => setActiveTab('control')}
@@ -410,12 +401,6 @@ function Dashboard({ user, onLogout }) {
         {activeTab === 'processes' && (
           <div className="processes-view">
             <ProcessList />
-          </div>
-        )}
-
-        {activeTab === 'terminal' && user.is_admin && (
-          <div className="terminal-view">
-            <Terminal />
           </div>
         )}
 

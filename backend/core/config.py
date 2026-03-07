@@ -4,7 +4,7 @@ Application configuration — reads from environment / .env file.
 import os
 from datetime import timedelta
 
-from logger import app_log, ops_log
+from utils.logger import app_log, ops_log
 
 _DEFAULT_SECRET = 'CHANGE_ME_USE_ENV_VAR_SECRET_KEY'
 _DEFAULT_JWT    = 'CHANGE_ME_USE_ENV_VAR_JWT_SECRET'

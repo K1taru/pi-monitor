@@ -9,11 +9,11 @@ Two loggers are configured so you can monitor them independently:
   2. 'ops'  — writes to  backend/logs/pi-monitor-ops.log  (rotated, 5 × 2 MB)
              Purpose: verbose trace of every significant action — DB calls,
              user creation, login attempts, fan/governor changes, metrics
-             collection, terminal sessions, etc.
+             collection, etc.
 
 Usage in any module:
 
-    from logger import app_log, ops_log
+    from utils.logger import app_log, ops_log
 
     app_log.info('Server starting on port %s', port)
     ops_log.info('User "%s" authenticated successfully', username)
@@ -28,9 +28,9 @@ import os
 from logging.handlers import RotatingFileHandler
 
 # ---------------------------------------------------------------------------
-# Paths
+# Paths — logs go to backend/logs/, one level above this file's package dir
 # ---------------------------------------------------------------------------
-_LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+_LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'logs')
 _OPS_LOG = os.path.join(_LOG_DIR, 'pi-monitor-ops.log')
 
 # Ensure log directory exists
