@@ -87,7 +87,8 @@ case "$1" in
         # See: https://github.com/raspberrypi/linux/pull/5617
         _TRIP_BACKUP=/run/pi-monitor-trip-backup
         : > "$_TRIP_BACKUP"  # truncate
-        for tp_type in /sys/class/thermal/thermal_zone0/trip_point_*_type 2>/dev/null; do
+        for tp_type in /sys/class/thermal/thermal_zone0/trip_point_*_type; do
+            [ -f "$tp_type" ] || continue
             idx=${tp_type##*trip_point_}
             idx=${idx%%_type}
             t=$(cat "$tp_type" 2>/dev/null || true)

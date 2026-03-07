@@ -83,6 +83,7 @@ cd "$PROJECT_DIR"
 
 # Ensure all setup scripts are executable (handles Windows CRLF line endings)
 sed -i 's/\r$//' setup/setup.sh setup/init-users.sh
+sed -i 's/\r$//' backend/scripts/fan-control.sh backend/scripts/gov-control.sh
 chmod +x setup/setup.sh setup/init-users.sh
 
 # ========================================
