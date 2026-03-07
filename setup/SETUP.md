@@ -92,8 +92,8 @@ At startup the fan runs at full speed for 60 seconds (startup boost), then switc
 # Verify fan hardware is in software-manual mode (should print 1)
 cat /sys/class/hwmon/hwmon*/pwm1_enable
 
-# Verify thermal bypass is active (lists trip-point backups)
-sudo cat /run/pi-monitor-trip-backup
+# Verify thermal governor was switched to user_space (no autonomous fan interference)
+cat /sys/class/thermal/thermal_zone0/policy   # should print: user_space
 
 # Current PWM value (0-255)
 cat /sys/class/hwmon/hwmon*/pwm1
@@ -211,7 +211,7 @@ sudo systemctl enable --now cloudflared
 - [ ] Change your password via the Control panel
 - [ ] Charts, Terminal, and Controls all work
 - [ ] Fan control is available in the Controls panel (Auto / Manual / Turbo)
-- [ ] Thermal bypass active: `sudo cat /run/pi-monitor-trip-backup` shows trip-point entries
+- [ ] Thermal zone is in `user_space` mode: `cat /sys/class/thermal/thermal_zone0/policy` → `user_space`
 - [ ] `pwm1_enable` is 1 (software manual): `cat /sys/class/hwmon/hwmon*/pwm1_enable`
 
 ---
@@ -228,7 +228,7 @@ sudo systemctl enable --now cloudflared
 | Users not created | Re-run: `sed -i 's/\r$//' ~/pi-monitor/setup/init-users.sh && chmod +x ~/pi-monitor/setup/init-users.sh && cd ~/pi-monitor && setup/init-users.sh` |
 | Governor/fan control fails | Check: `sudo -l \| grep pi-monitor`; verify `/etc/sudoers.d/pi-monitor` exists |
 | Fan not detected | Check: `ls /sys/class/hwmon/hwmon*/pwm1` — Pi 5 fan must be in the fan header |
-| Fan reverts to kernel control | Service may not have started yet; check `sudo journalctl -u pi-monitor -n 50` for `disable-thermal-fan` log line |
+| Fan reverts to kernel control | Check thermal policy: `cat /sys/class/thermal/thermal_zone0/policy` should be `user_space`; restart the service if not |
 | `pwm1_enable` shows 2 after restart | Startup boost hasn't finished yet (normal for ~60s after boot); check mode via Controls panel |
 | Fan curve not saving | Check DB: `sqlite3 ~/pi-monitor/backend/monitor.db 'SELECT * FROM fan_curve;'` |
 | Frontend shows 404 | Rebuild: `cd ~/pi-monitor/frontend && npm install && npm run build` |

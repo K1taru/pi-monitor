@@ -139,15 +139,14 @@ def _ensure_hw_manual() -> None:
 
 
 def _disable_thermal_fan() -> None:
-    """Disable kernel thermal governor fan management.
+    """Switch the thermal zone to the 'user_space' governor.
 
-    The step_wise governor has a bug (uninitialised variable, see
-    https://github.com/raspberrypi/linux/pull/5617) that can lock the
-    cooling device at max state.  Even on patched kernels the governor
-    will fight our PWM writes through the cooling-device path, bypassing
-    pwm1_enable.  Pushing the active trip points to 110 °C prevents the
-    governor from ever touching the fan while keeping CPU passive
-    throttling and the critical shutdown intact.
+    The step_wise governor, even with pwm1_enable=1, writes cooling_device
+    cur_state=0 whenever the CPU temp is below the active trip point.  On
+    unpatched Pi 5 kernels (https://github.com/raspberrypi/linux/pull/5617)
+    that write bypasses pwm1_enable and zeroes pwm1.  Switching to
+    'user_space' stops the governor from ever autonomously writing cooling
+    states, giving our software loop exclusive PWM authority.
     """
     try:
         subprocess.run(

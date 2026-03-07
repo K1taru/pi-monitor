@@ -81,34 +81,42 @@ case "$1" in
         fi
         ;;
     disable-thermal-fan)
-        # Push all "active" cooling trip points to 110 °C so the kernel's
-        # step_wise governor never triggers fan changes.  CPU passive
-        # throttling and the critical-shutdown trip are unaffected.
+        # Switch the thermal zone to the 'user_space' governor so the kernel
+        # stops autonomously writing cooling-device states.
+        #
+        # The previous approach of pushing trip points to 110 °C was wrong:
+        # step_wise sees temp < trip and actively sets cooling_device cur_state=0
+        # (fan off), which on unpatched Pi 5 kernels bypasses pwm1_enable=1 and
+        # zeroes pwm1.  With 'user_space' the governor does nothing on its own.
         # See: https://github.com/raspberrypi/linux/pull/5617
-        _TRIP_BACKUP=/run/pi-monitor-trip-backup
-        : > "$_TRIP_BACKUP"  # truncate
-        for tp_type in /sys/class/thermal/thermal_zone0/trip_point_*_type; do
-            [ -f "$tp_type" ] || continue
-            idx=${tp_type##*trip_point_}
-            idx=${idx%%_type}
-            t=$(cat "$tp_type" 2>/dev/null || true)
-            if [ "$t" = "active" ]; then
-                tp_temp="/sys/class/thermal/thermal_zone0/trip_point_${idx}_temp"
-                orig=$(cat "$tp_temp" 2>/dev/null || echo 55000)
-                echo "${idx}:${orig}" >> "$_TRIP_BACKUP"
-                echo 110000 > "$tp_temp"
-            fi
-        done
-        ;;
-    enable-thermal-fan)
-        # Restore original trip-point temperatures saved by disable-thermal-fan.
+        _ZONE=/sys/class/thermal/thermal_zone0
+        _POLICY_BACKUP=/run/pi-monitor-thermal-policy-backup
+
+        # Clean up any trip-point changes from the old approach
         _TRIP_BACKUP=/run/pi-monitor-trip-backup
         if [ -f "$_TRIP_BACKUP" ]; then
             while IFS=: read -r idx orig; do
-                tp_temp="/sys/class/thermal/thermal_zone0/trip_point_${idx}_temp"
+                tp_temp="$_ZONE/trip_point_${idx}_temp"
                 echo "$orig" > "$tp_temp" 2>/dev/null || true
             done < "$_TRIP_BACKUP"
             rm -f "$_TRIP_BACKUP"
+        fi
+
+        if [ -f "$_ZONE/policy" ]; then
+            cat "$_ZONE/policy" > "$_POLICY_BACKUP"
+            echo "user_space" > "$_ZONE/policy"
+        fi
+        ;;
+    enable-thermal-fan)
+        # Restore the original thermal zone governor.
+        _POLICY_BACKUP=/run/pi-monitor-thermal-policy-backup
+        _ZONE=/sys/class/thermal/thermal_zone0
+        if [ -f "$_POLICY_BACKUP" ]; then
+            orig=$(cat "$_POLICY_BACKUP")
+            echo "$orig" > "$_ZONE/policy" 2>/dev/null || true
+            rm -f "$_POLICY_BACKUP"
+        else
+            echo "step_wise" > "$_ZONE/policy" 2>/dev/null || true
         fi
         ;;
     *)
