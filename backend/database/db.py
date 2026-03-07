@@ -148,6 +148,13 @@ def init_db():
                         ON metrics_history (timestamp)''')
         ops_log.info('Index "idx_metrics_timestamp" — OK')
 
+        ops_log.info('Creating table "fan_curve" if not exists ...')
+        conn.execute('''CREATE TABLE IF NOT EXISTS fan_curve
+                        (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                         temp INTEGER NOT NULL,
+                         speed INTEGER NOT NULL)''')
+        ops_log.info('Table "fan_curve" — OK')
+
         _create_default_users(conn)
 
     ops_log.info('=== DATABASE INIT COMPLETE ===')

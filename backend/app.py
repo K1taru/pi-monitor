@@ -18,7 +18,8 @@ from database import init_db
 from services.metrics import start_collector
 from routes.auth import auth_bp
 from routes.metrics import metrics_bp
-from routes.system import system_bp, fan_boost_on_start
+from routes.system import system_bp
+from services.fan_curve import fan_boost_on_start, start_fan_controller
 from routes.dist import frontend_bp
 
 
@@ -51,7 +52,8 @@ def create_app() -> Flask:
     # Database & background collector
     init_db()
     start_collector()
-    fan_boost_on_start(duration=60)  # Max fan speed for first minute
+    start_fan_controller()
+    fan_boost_on_start(duration=60)  # Turbo for first minute, then auto
 
     ops_log.info('=== APP STARTUP COMPLETE ===')
     return app
