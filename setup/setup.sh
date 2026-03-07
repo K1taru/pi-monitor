@@ -192,6 +192,30 @@ echo "      Starting $SERVICE_NAME ..."
 systemctl restart "$SERVICE_NAME"
 echo "[ok] $SERVICE_NAME started"
 
+# Give the service a moment to run its startup hooks (write-mode 1, disable-thermal-fan)
+sleep 3
+
+# ========================================
+# 7. Verify fan control bootstrap
+# ========================================
+echo ""
+echo "[verify] Fan control bootstrap:"
+
+THERMAL_MODE=$(cat /sys/class/thermal/thermal_zone0/mode 2>/dev/null || echo "N/A")
+if [ "$THERMAL_MODE" = "disabled" ]; then
+    echo "  [ok] Thermal zone governor: disabled (kernel won't touch fan)"
+else
+    echo "  [WARN] Thermal zone mode = '$THERMAL_MODE' (expected 'disabled')"
+    echo "         The kernel may still override fan PWM. Check service logs."
+fi
+
+PWM_ENABLE=$(cat /sys/class/hwmon/hwmon*/pwm1_enable 2>/dev/null | head -1 || echo "N/A")
+if [ "$PWM_ENABLE" = "1" ]; then
+    echo "  [ok] hwmon pwm1_enable = 1 (software manual mode)"
+else
+    echo "  [WARN] hwmon pwm1_enable = '$PWM_ENABLE' (expected 1)"
+fi
+
 # ========================================
 # Done
 # ========================================
