@@ -139,14 +139,18 @@ def _ensure_hw_manual() -> None:
 
 
 def _disable_thermal_fan() -> None:
-    """Switch the thermal zone to the 'user_space' governor.
+    """Disable the thermal zone governor by writing mode=disabled.
 
-    The step_wise governor, even with pwm1_enable=1, writes cooling_device
-    cur_state=0 whenever the CPU temp is below the active trip point.  On
-    unpatched Pi 5 kernels (https://github.com/raspberrypi/linux/pull/5617)
-    that write bypasses pwm1_enable and zeroes pwm1.  Switching to
-    'user_space' stops the governor from ever autonomously writing cooling
-    states, giving our software loop exclusive PWM authority.
+    On Pi 5 the firmware locks the thermal zone policy, so writing
+    'user_space' to /sys/class/thermal/thermal_zone0/policy returns EINVAL.
+    Writing 'disabled' to the 'mode' file stops the step_wise governor loop
+    entirely so it never calls set_cur_state() on the cooling device.
+
+    Without this, step_wise fires every few seconds and — due to the
+    unpatched pwm-fan bug (https://github.com/raspberrypi/linux/pull/5617)
+    — writes cur_state=0 directly to the firmware, bypassing pwm1_enable=1
+    and zeroing pwm1.  Our control loop provides equivalent thermal
+    protection in software.
     """
     try:
         subprocess.run(
