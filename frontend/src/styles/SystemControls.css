@@ -286,6 +286,11 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   flex: 1;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.fan-stat:hover {
+  border-color: var(--border-bright);
 }
 
 .fan-stat .label {
@@ -304,6 +309,7 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  transition: color 0.4s ease;
 }
 
 .fan-controls {
@@ -337,7 +343,7 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .mode-btn:hover {
@@ -375,7 +381,7 @@
 
 @keyframes turboPulse {
   0%, 100% { box-shadow: 0 0 16px rgba(255, 51, 102, 0.25); }
-  50% { box-shadow: 0 0 28px rgba(255, 51, 102, 0.45); }
+  50% { box-shadow: 0 0 28px rgba(255, 51, 102, 0.45), 0 0 50px rgba(255, 51, 102, 0.15); }
 }
 
 .text-danger {
@@ -390,7 +396,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .fan-slider-group.disabled {

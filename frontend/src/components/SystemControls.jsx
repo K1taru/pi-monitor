@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { Settings, Cpu, Fan, Power, AlertCircle, Check, Wind, Zap } from 'lucide-react';
 import FanCurve from './FanCurve';
@@ -9,13 +9,18 @@ function SystemControls() {
     current: '',
     available: []
   });
-  const [fan, setFan] = useState({ available: false, speed: 50, rpm: 0, mode: 'auto' });
+  const [fan, setFan] = useState({ available: false, speed: 50, rpm: 0, mode: 'auto', manualSpeed: 50 });
   const [fanSpeed, setFanSpeed] = useState(50);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(null);
+  const sliderTimeout = useRef(null);
+  const fanPollRef = useRef(null);
 
   useEffect(() => {
     Promise.all([fetchGovernor(), fetchFan()]);
+    // Poll fan status every 2s
+    fanPollRef.current = setInterval(fetchFanSilent, 2000);
+    return () => clearInterval(fanPollRef.current);
   }, []);
 
   const fetchGovernor = async () => {
@@ -33,9 +38,18 @@ function SystemControls() {
     try {
       const response = await axios.get('/system/fan');
       setFan(response.data);
-      if (response.data.speed !== undefined) setFanSpeed(response.data.speed);
+      if (response.data.manualSpeed !== undefined) setFanSpeed(response.data.manualSpeed);
     } catch (error) {
       console.error('Error fetching fan status:', error);
+    }
+  };
+
+  const fetchFanSilent = async () => {
+    try {
+      const response = await axios.get('/system/fan');
+      setFan(response.data);
+    } catch {
+      // silent — don't spam console on transient errors
     }
   };
 
@@ -51,9 +65,7 @@ function SystemControls() {
 
   const handleFanMode = async (mode) => {
     try {
-      const payload = { mode };
-      if (mode === 'manual') payload.speed = fanSpeed;
-      await axios.post('/system/fan', payload);
+      await axios.post('/system/fan', { mode });
       const labels = { auto: 'Auto (curve)', manual: 'Manual', turbo: 'Turbo' };
       showMessage('success', `Fan mode: ${labels[mode]}`);
       await fetchFan();
@@ -62,15 +74,18 @@ function SystemControls() {
     }
   };
 
-  const handleFanSpeedApply = async () => {
-    try {
-      await axios.post('/system/fan', { mode: 'manual', speed: fanSpeed });
-      showMessage('success', `Fan speed set to ${fanSpeed}%`);
-      await fetchFan();
-    } catch (error) {
-      showMessage('error', error.response?.data?.error || 'Failed to set fan speed');
-    }
-  };
+  // Debounced slider — sends speed 150ms after the user stops dragging
+  const handleSliderChange = useCallback((value) => {
+    setFanSpeed(value);
+    if (sliderTimeout.current) clearTimeout(sliderTimeout.current);
+    sliderTimeout.current = setTimeout(async () => {
+      try {
+        await axios.post('/system/fan', { speed: value });
+      } catch (error) {
+        showMessage('error', error.response?.data?.error || 'Failed to set fan speed');
+      }
+    }, 150);
+  }, []);
 
   const handleReboot = async () => {
     if (!confirm('Are you sure you want to reboot the system? This will disconnect all users.')) {
@@ -236,16 +251,9 @@ function SystemControls() {
                 max="100"
                 value={fanSpeed}
                 disabled={fan.mode !== 'manual'}
-                onChange={(e) => setFanSpeed(Number(e.target.value))}
+                onChange={(e) => handleSliderChange(Number(e.target.value))}
                 className="fan-slider"
               />
-              <button
-                className="btn btn-secondary"
-                onClick={handleFanSpeedApply}
-                disabled={fan.mode !== 'manual'}
-              >
-                Apply Speed
-              </button>
             </div>
           </>
         )}

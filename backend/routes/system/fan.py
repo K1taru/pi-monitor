@@ -14,7 +14,7 @@ from flask import Blueprint, jsonify, request
 from utils.decorators import admin_required
 from utils.logger import ops_log
 from services.fan_curve import (
-    get_mode, set_mode, get_curve, set_curve, set_manual_speed,
+    get_mode, set_mode, get_curve, set_curve, set_manual_speed, get_manual_speed,
 )
 
 fan_bp = Blueprint('system_fan', __name__)
@@ -82,6 +82,7 @@ def fan_control():
                 'pwm': pwm,
                 'rpm': rpm,
                 'mode': mode,
+                'manualSpeed': get_manual_speed(),
             }), 200
         except (OSError, IOError) as e:
             return jsonify({'error': str(e)}), 500

@@ -25,14 +25,16 @@ _FAN_CONTROL_BIN = os.environ.get(
 
 # ── Runtime state ────────────────────────────────────────────────────────────
 _fan_mode: str = 'auto'
+_last_manual_speed: int = 50  # remembered across mode switches
 _mode_lock = threading.Lock()
 
 DEFAULT_CURVE: list[dict[str, int]] = [
-    {'temp': 40, 'speed': 0},
-    {'temp': 50, 'speed': 25},
-    {'temp': 60, 'speed': 50},
-    {'temp': 70, 'speed': 75},
-    {'temp': 80, 'speed': 100},
+    {'temp': 30, 'speed': 0},
+    {'temp': 33, 'speed': 20},
+    {'temp': 36, 'speed': 40},
+    {'temp': 39, 'speed': 60},
+    {'temp': 42, 'speed': 80},
+    {'temp': 45, 'speed': 100},
 ]
 
 
@@ -43,6 +45,12 @@ def get_mode() -> str:
         return _fan_mode
 
 
+def get_manual_speed() -> int:
+    """Return the last-set manual speed (0–100 %)."""
+    with _mode_lock:
+        return _last_manual_speed
+
+
 def set_mode(mode: str) -> None:
     global _fan_mode
     if mode not in ('auto', 'manual', 'turbo'):
@@ -51,6 +59,9 @@ def set_mode(mode: str) -> None:
         _fan_mode = mode
     if mode == 'turbo':
         _write_pwm(255)
+    elif mode == 'manual':
+        # Restore the remembered manual speed immediately
+        set_manual_speed(_last_manual_speed)
     ops_log.info('Fan mode → %s', mode)
 
 
@@ -121,7 +132,11 @@ def _write_pwm(value: int) -> None:
 
 
 def set_manual_speed(speed_pct: int) -> None:
-    """Apply a manual fan speed (0–100 %). Only meaningful in manual mode."""
+    """Apply a manual fan speed (0–100 %) and remember it."""
+    global _last_manual_speed
+    speed_pct = max(0, min(100, speed_pct))
+    with _mode_lock:
+        _last_manual_speed = speed_pct
     pwm = max(0, min(255, round(speed_pct / 100 * 255)))
     _write_pwm(pwm)
     ops_log.info('Manual fan speed: %d%% (PWM %d)', speed_pct, pwm)

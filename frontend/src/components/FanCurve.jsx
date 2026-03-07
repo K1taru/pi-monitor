@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, Minus, Save, AlertCircle, Check } from 'lucide-react';
+import { Plus, Trash2, Save, AlertCircle, Check } from 'lucide-react';
 import '../styles/FanCurve.css';
 
 function FanCurve() {
@@ -16,7 +16,7 @@ function FanCurve() {
     try {
       const res = await axios.get('/system/fan/curve');
       if (res.data.points?.length) {
-        setPoints(res.data.points);
+        setPoints(res.data.points.sort((a, b) => a.temp - b.temp));
       }
     } catch (err) {
       console.error('Error fetching fan curve:', err);
@@ -25,64 +25,36 @@ function FanCurve() {
     }
   };
 
-  const handleSpeedChange = (index, speed) => {
-    const sorted = getSorted();
-    const realIndex = sortedToReal(index);
-    const updated = [...points];
-    updated[realIndex] = {
-      ...updated[realIndex],
-      speed: Math.max(0, Math.min(100, Number(speed))),
-    };
-    setPoints(updated);
+  const updatePoint = (index, field, value) => {
+    const max = field === 'temp' ? 110 : 100;
+    const clamped = Math.max(0, Math.min(max, Number(value) || 0));
+    const updated = points.map((p, i) =>
+      i === index ? { ...p, [field]: clamped } : p
+    );
+    setPoints(updated.sort((a, b) => a.temp - b.temp));
   };
-
-  const handleTempChange = (index, temp) => {
-    const realIndex = sortedToReal(index);
-    const updated = [...points];
-    updated[realIndex] = {
-      ...updated[realIndex],
-      temp: Math.max(0, Math.min(110, Number(temp))),
-    };
-    setPoints(updated);
-  };
-
-  const getSorted = () =>
-    [...points]
-      .map((p, i) => ({ ...p, _i: i }))
-      .sort((a, b) => a.temp - b.temp);
-
-  const sortedToReal = (sortedIdx) => getSorted()[sortedIdx]._i;
 
   const addPoint = () => {
     if (points.length >= 10) return;
-    const sorted = getSorted();
-    const last = sorted[sorted.length - 1];
-    setPoints([
-      ...points,
-      {
-        temp: Math.min(110, (last?.temp || 50) + 10),
-        speed: Math.min(100, (last?.speed || 50) + 10),
-      },
-    ]);
+    const last = points[points.length - 1];
+    const newPoint = {
+      temp: Math.min(110, (last?.temp || 50) + 10),
+      speed: Math.min(100, (last?.speed || 50) + 10),
+    };
+    setPoints([...points, newPoint].sort((a, b) => a.temp - b.temp));
   };
 
-  const removePoint = (sortedIdx) => {
+  const removePoint = (index) => {
     if (points.length <= 1) return;
-    const realIndex = sortedToReal(sortedIdx);
-    setPoints(points.filter((_, i) => i !== realIndex));
+    setPoints(points.filter((_, i) => i !== index));
   };
 
   const saveCurve = async () => {
     try {
-      const sorted = [...points].sort((a, b) => a.temp - b.temp);
-      await axios.post('/system/fan/curve', { points: sorted });
-      setPoints(sorted);
+      await axios.post('/system/fan/curve', { points });
       showMessage('success', 'Fan curve saved');
     } catch (err) {
-      showMessage(
-        'error',
-        err.response?.data?.error || 'Failed to save curve'
-      );
+      showMessage('error', err.response?.data?.error || 'Failed to save curve');
     }
   };
 
@@ -93,100 +65,80 @@ function FanCurve() {
 
   if (loading) return null;
 
-  const sorted = getSorted();
-
   return (
     <div className="fan-curve-container">
       {message && (
         <div className={`curve-message ${message.type}`}>
-          {message.type === 'success' ? (
-            <Check size={16} />
-          ) : (
-            <AlertCircle size={16} />
-          )}
+          {message.type === 'success' ? <Check size={16} /> : <AlertCircle size={16} />}
           <span>{message.text}</span>
         </div>
       )}
 
-      <div className="mixer-board">
-        {sorted.map((point, index) => (
-          <div className="channel-strip" key={index}>
-            {/* Speed display */}
-            <div className="channel-display">
-              <span className="speed-value">{point.speed}%</span>
-            </div>
+      <div className="curve-table">
+        <div className="curve-header">
+          <span className="curve-col-temp">Temp</span>
+          <span className="curve-col-speed">Speed</span>
+          <span className="curve-col-bar"></span>
+          <span className="curve-col-action"></span>
+        </div>
 
-            {/* Vertical fader */}
-            <div className="fader-track">
-              <div
-                className="fader-fill"
-                style={{ height: `${point.speed}%` }}
+        {points.map((point, index) => (
+          <div className="curve-row" key={index}>
+            <div className="curve-col-temp">
+              <input
+                type="range"
+                min="0"
+                max="110"
+                value={point.temp}
+                onChange={(e) => updatePoint(index, 'temp', e.target.value)}
+                className="temp-slider"
               />
+              <span className="temp-label">{point.temp}°C</span>
+            </div>
+            <div className="curve-col-speed">
               <input
                 type="range"
                 min="0"
                 max="100"
                 value={point.speed}
-                onChange={(e) => handleSpeedChange(index, e.target.value)}
-                className="fader-input"
+                onChange={(e) => updatePoint(index, 'speed', e.target.value)}
+                className="speed-slider"
               />
+              <span className="speed-label">{point.speed}%</span>
             </div>
-
-            {/* LED meter */}
-            <div className="led-meter">
-              {[...Array(8)].map((_, i) => {
-                const threshold = ((7 - i) / 7) * 100;
-                const active = point.speed >= threshold;
-                const color =
-                  i < 2 ? 'led-red' : i < 4 ? 'led-yellow' : 'led-green';
-                return (
-                  <div
-                    key={i}
-                    className={`led ${color} ${active ? 'active' : ''}`}
-                  />
-                );
-              })}
+            <div className="curve-col-bar">
+              <div className="bar-track">
+                <div
+                  className="bar-fill"
+                  style={{ width: `${point.speed}%` }}
+                />
+              </div>
             </div>
-
-            {/* Temperature input */}
-            <div className="channel-label">
-              <input
-                type="number"
-                min="0"
-                max="110"
-                value={point.temp}
-                onChange={(e) => handleTempChange(index, e.target.value)}
-                className="temp-input"
-              />
-              <span className="temp-unit">°C</span>
+            <div className="curve-col-action">
+              {points.length > 1 && (
+                <button
+                  className="remove-btn"
+                  onClick={() => removePoint(index)}
+                  title="Remove point"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
             </div>
-
-            {/* Remove button */}
-            {points.length > 1 && (
-              <button
-                className="channel-remove"
-                onClick={() => removePoint(index)}
-                title="Remove point"
-              >
-                <Minus size={12} />
-              </button>
-            )}
           </div>
         ))}
-
-        {/* Add channel */}
-        {points.length < 10 && (
-          <button className="add-channel" onClick={addPoint}>
-            <Plus size={20} />
-            <span>Add</span>
-          </button>
-        )}
       </div>
 
       <div className="curve-actions">
-        <span className="curve-hint">
-          {points.length}/10 points — drag faders to set fan speed per temperature
-        </span>
+        <div className="curve-actions-left">
+          {points.length < 10 && (
+            <button className="btn btn-ghost" onClick={addPoint}>
+              <Plus size={16} />
+              Add Point
+            </button>
+          )}
+          <span className="curve-hint">{points.length}/10 points</span>
+        </div>
         <button className="btn btn-primary" onClick={saveCurve}>
           <Save size={16} />
           Save Curve
